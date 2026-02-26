@@ -6,10 +6,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <library.h>
+#include <crypto/key_exchange.h>
 #include "gmalg_plugin.h"
 #include "gmalg_hasher.h"
 #include "gmalg_crypter.h"
 #include "gmalg_signer.h"
+#include "gmalg_ke.h"
 
 /* Print hex buffer */
 static void print_hex(const char *label, const uint8_t *data, size_t len)
@@ -387,6 +389,203 @@ static int test_sm2_signer(void)
 	return result;
 }
 
+/* Test SM2-KEM Key Encapsulation Mechanism (Bidirectional) */
+static int test_sm2_kem(void)
+{
+	printf("\n=== Testing SM2-KEM (Bidirectional Encapsulation) ===\n");
+
+	key_exchange_t *initiator, *responder;
+	chunk_t initiator_enccert = chunk_empty;
+	chunk_t initiator_ct = chunk_empty;
+	chunk_t responder_enccert = chunk_empty;
+	chunk_t responder_ct = chunk_empty;
+	chunk_t initiator_secret = chunk_empty;
+	chunk_t responder_secret = chunk_empty;
+	int result = 0;
+
+	/* R0 Phase: Generate key pairs (simulating certificate distribution) */
+	printf("\n--- R0 Phase: Generate and distribute EncCert key pairs ---\n");
+
+	SM2_KEY initiator_key, responder_key;
+	SM2_KEY initiator_peer_enccert, responder_peer_enccert;
+
+	/* Generate Initiator's EncCert key pair */
+	if (sm2_key_generate(&initiator_key) != 1) {
+		printf("ERROR: Failed to generate Initiator's key pair\n");
+		return -1;
+	}
+	printf("Initiator's EncCert key pair generated\n");
+
+	/* Generate Responder's EncCert key pair */
+	if (sm2_key_generate(&responder_key) != 1) {
+		printf("ERROR: Failed to generate Responder's key pair\n");
+		return -1;
+	}
+	printf("Responder's EncCert key pair generated\n");
+
+	/* Distribute public keys (simulate R0 certificate exchange) */
+	memcpy(&initiator_peer_enccert, &responder_key, sizeof(SM2_KEY));
+	memcpy(&responder_peer_enccert, &initiator_key, sizeof(SM2_KEY));
+	printf("EncCert public keys exchanged (R0 phase complete)\n");
+
+	/* Create initiator KE instance with pre-distributed keys */
+	initiator = gmalg_sm2_ke_create_with_keys(KE_SM2, TRUE,
+											   &initiator_key,
+											   &initiator_peer_enccert);
+	if (!initiator) {
+		printf("ERROR: Failed to create SM2-KEM initiator\n");
+		return -1;
+	}
+	printf("SM2-KEM initiator created with pre-distributed keys\n");
+
+	/* Create responder KE instance with pre-distributed keys */
+	responder = gmalg_sm2_ke_create_with_keys(KE_SM2, FALSE,
+											   &responder_key,
+											   &responder_peer_enccert);
+	if (!responder) {
+		printf("ERROR: Failed to create SM2-KEM responder\n");
+		initiator->destroy(initiator);
+		return -1;
+	}
+	printf("SM2-KEM responder created with pre-distributed keys\n");
+
+	/*
+	 * Bidirectional SM2-KEM Protocol:
+	 *
+	 * Step 1: Exchange EncCert public keys (mock mode: generate key pairs)
+	 */
+	printf("\n--- Step 1: Exchange EncCert public keys ---\n");
+
+	/* Initiator gets its EncCert public key */
+	if (!initiator->get_public_key(initiator, &initiator_enccert)) {
+		printf("ERROR: Initiator failed to get EncCert public key\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Initiator EncCert public key: %zu bytes\n", initiator_enccert.len);
+	print_hex("  First 16 bytes", initiator_enccert.ptr, 16);
+
+	/* Responder gets its EncCert public key */
+	if (!responder->get_public_key(responder, &responder_enccert)) {
+		printf("ERROR: Responder failed to get EncCert public key\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Responder EncCert public key: %zu bytes\n", responder_enccert.len);
+	print_hex("  First 16 bytes", responder_enccert.ptr, 16);
+
+	/*
+	 * Step 2: Initiator encapsulates r_i with Responder's EncCert
+	 */
+	printf("\n--- Step 2: Initiator encapsulates r_i ---\n");
+
+	/* Initiator receives Responder's EncCert and encapsulates */
+	if (!initiator->set_public_key(initiator, responder_enccert)) {
+		printf("ERROR: Initiator failed to set Responder's EncCert\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Initiator encrypted r_i with Responder's EncCert\n");
+
+	/* Initiator gets ciphertext ct_i to send */
+	if (!initiator->get_public_key(initiator, &initiator_ct)) {
+		printf("ERROR: Initiator failed to get ciphertext\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Initiator ciphertext ct_i: %zu bytes\n", initiator_ct.len);
+	print_hex("  First 16 bytes", initiator_ct.ptr, 16);
+
+	/*
+	 * Step 3: Responder decapsulates r_i, encapsulates r_r
+	 */
+	printf("\n--- Step 3: Responder decapsulates r_i, encapsulates r_r ---\n");
+
+	/* Responder receives Initiator's EncCert */
+	if (!responder->set_public_key(responder, initiator_enccert)) {
+		printf("ERROR: Responder failed to set Initiator's EncCert\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Responder received Initiator's EncCert\n");
+
+	/* Responder receives ct_i, decapsulates and encapsulates */
+	if (!responder->set_public_key(responder, initiator_ct)) {
+		printf("ERROR: Responder failed to process Initiator's ciphertext\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Responder decrypted r_i and encrypted r_r\n");
+
+	/* Responder gets ciphertext ct_r to send */
+	if (!responder->get_public_key(responder, &responder_ct)) {
+		printf("ERROR: Responder failed to get ciphertext\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Responder ciphertext ct_r: %zu bytes\n", responder_ct.len);
+	print_hex("  First 16 bytes", responder_ct.ptr, 16);
+
+	/*
+	 * Step 4: Initiator decapsulates r_r, computes SK = r_i || r_r
+	 */
+	printf("\n--- Step 4: Initiator decapsulates r_r ---\n");
+
+	/* Initiator receives ct_r and decapsulates */
+	if (!initiator->set_public_key(initiator, responder_ct)) {
+		printf("ERROR: Initiator failed to process Responder's ciphertext\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Initiator decrypted r_r\n");
+
+	/*
+	 * Step 5: Both compute shared secret SK = r_i || r_r
+	 */
+	printf("\n--- Step 5: Verify shared secrets match ---\n");
+
+	/* Initiator gets shared secret */
+	if (!initiator->get_shared_secret(initiator, &initiator_secret)) {
+		printf("ERROR: Initiator failed to get shared secret\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Initiator shared secret: %zu bytes\n", initiator_secret.len);
+	print_hex("  SK = r_i || r_r", initiator_secret.ptr, 64);
+
+	/* Responder gets shared secret */
+	if (!responder->get_shared_secret(responder, &responder_secret)) {
+		printf("ERROR: Responder failed to get shared secret\n");
+		result = -1;
+		goto cleanup;
+	}
+	printf("Responder shared secret: %zu bytes\n", responder_secret.len);
+	print_hex("  SK = r_i || r_r", responder_secret.ptr, 64);
+
+	/* Verify both secrets match */
+	if (initiator_secret.len != responder_secret.len ||
+		memcmp(initiator_secret.ptr, responder_secret.ptr, initiator_secret.len) != 0) {
+		printf("ERROR: Shared secrets do not match!\n");
+		result = -1;
+	} else {
+		printf("\n========================================\n");
+		printf("SM2-KEM bidirectional encapsulation: PASSED\n");
+		printf("SK = r_i || r_r (%zu bytes)\n", initiator_secret.len);
+		printf("========================================\n");
+	}
+
+cleanup:
+	chunk_clear(&initiator_enccert);
+	chunk_clear(&initiator_ct);
+	chunk_clear(&responder_enccert);
+	chunk_clear(&responder_ct);
+	chunk_clear(&initiator_secret);
+	chunk_clear(&responder_secret);
+	if (initiator) initiator->destroy(initiator);
+	if (responder) responder->destroy(responder);
+	return result;
+}
+
 int main(int argc, char *argv[])
 {
 	int failed = 0;
@@ -408,6 +607,7 @@ int main(int argc, char *argv[])
 	if (test_sm4_cbc() < 0) failed++;
 	if (test_sm4_ctr() < 0) failed++;
 	if (test_sm2_signer() < 0) failed++;
+	if (test_sm2_kem() < 0) failed++;
 
 	printf("\n===========================================\n");
 	if (failed == 0) {
