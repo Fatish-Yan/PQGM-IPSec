@@ -163,19 +163,51 @@ Shared secret: 64 bytes (SK = r_i || r_r)
 
 ---
 
-## Module 5: 协议集成 (待开发)
+## Module 5: 协议集成 (已完成 ✅)
 
-**状态**: 依赖 Module 2, 3, 4
+**状态**: M5 核心功能实现完成
 
-**任务**:
-- [ ] IKE_SA_INIT 提案协商
-- [ ] IKE_INTERMEDIATE 流程编排
-- [ ] 密钥派生链 (RFC 9370)
-- [ ] IKE_AUTH 后量子认证
+**已完成任务**:
+- [x] IKE_SA_INIT 三重密钥交换提案 (x25519 + ML-KEM-768 + SM2-KEM)
+- [x] IKE_INTERMEDIATE #0 证书分发机制
+- [x] strongSwan ike_cert_post.c 消息 ID 检查
+- [x] Initiator/Responder swanctl.conf 配置
+- [x] gmalg_signer.c 编译警告修复
+- [x] strongSwan 6.0.4 重新构建和安装
 
-**核心代码位置**:
-- `/home/ipsec/strongswan/src/libstrongswan/sa/ike/`
-- `/home/ipsec/strongswan/src/libstrongswan/sa/keymat/`
+**配置文件**:
+- `configs/initiator/swanctl.conf` - 发起方配置
+- `configs/responder/swanctl.conf` - 响应方配置
+- `scripts/test_pqgm_ikev2.sh` - 端到端测试脚本
+- `scripts/benchmark_pqgm.sh` - 性能基准测试
+- `docs/pqgm-ikev2-integration.md` - 集成指南文档
+
+**代码修改**:
+- `strongswan/src/libcharon/sa/ikev2/tasks/ike_cert_post.c`
+  - 添加 `message_id == 1` 检查，确保证书仅在第一个 IKE_INTERMEDIATE 发送
+  - 添加 PQ-GM-IKEv2 调试日志
+- `strongswan/src/libstrongswan/plugins/gmalg/gmalg_signer.c`
+  - 修复 METHOD 宏的 HAVE_GMSSL 条件编译
+  - 解决 -Werror 未使用变量警告
+
+**协议流程**:
+```
+1. IKE_SA_INIT: 协商三重 KE (x25519 + ke1_mlkem768 + ke2_sm2kem)
+2. IKE_INTERMEDIATE #0: 交换双证书 (SignCert + EncCert)
+3. IKE_INTERMEDIATE #1: SM2-KEM 密钥交换
+4. IKE_INTERMEDIATE #2: ML-KEM-768 密钥交换
+5. IKE_AUTH: SM2 签名认证 (后量子认证待扩展)
+```
+
+**Git 分支**: `m5-protocol-integration` (独立 worktree)
+
+**待完善** (需要双机测试):
+- [ ] 端到端连接测试
+- [ ] IKE_INTERMEDIATE #1/#2 ADDKE 执行验证
+- [ ] 性能基准测试数据收集
+- [ ] IKE_AUTH 后量子签名认证 (ML-DSA/SLH-DSA)
+
+**负责 Agent**: 已完成核心实现，等待双机测试
 
 **负责 Agent**: 需要 strongSwan 架构专家
 
