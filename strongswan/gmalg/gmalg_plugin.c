@@ -16,7 +16,7 @@
 #include "gmalg_hasher.h"
 #include "gmalg_crypter.h"
 
-#if defined(HAVE_GMSSL)
+#ifdef HAVE_GMSSL
 #include <gmssl/sm3.h>
 #include <gmssl/sm4.h>
 #include <gmssl/sm2.h>
@@ -49,22 +49,18 @@ METHOD(plugin_t, get_features, int,
 		/* SM3 Hash Algorithm */
 		PLUGIN_REGISTER(HASHER, gmalg_sm3_hasher_create),
 			PLUGIN_PROVIDE(HASHER, HASH_SM3),
-			PLUGIN_PROVIDE(HASHER, HASH_SHA256),  /* SM3 is same size as SHA256 */
 
 		/* SM3 PRF */
 		PLUGIN_REGISTER(PRF, gmalg_sm3_prf_create),
 			PLUGIN_PROVIDE(PRF, PRF_SM3),
-			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_256),  /* Fallback for SHA256-based PRF */
 
-		/* SM4 Block Cipher - ECB mode */
+		/* SM4 Block Cipher - ECB mode (16 bytes = 128 bits key) */
 		PLUGIN_REGISTER(CRYPTER, gmalg_sm4_crypter_create),
-			PLUGIN_PROVIDE(CRYPTER, ENCR_SM4_ECB),
-			PLUGIN_PROVIDE(CRYPTER, ENCR_AES_ECB),  /* Same block/key size as AES */
+			PLUGIN_PROVIDE(CRYPTER, ENCR_SM4_ECB, 16),
 
 		/* SM4 Block Cipher - CBC mode */
 		PLUGIN_REGISTER(CRYPTER, gmalg_sm4_cbc_crypter_create),
-			PLUGIN_PROVIDE(CRYPTER, ENCR_SM4_CBC),
-			PLUGIN_PROVIDE(CRYPTER, ENCR_AES_CBC),  /* Same block/key size as AES */
+			PLUGIN_PROVIDE(CRYPTER, ENCR_SM4_CBC, 16),
 #endif
 	};
 	*features = f;

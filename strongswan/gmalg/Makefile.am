@@ -1,10 +1,24 @@
 # gmalg plugin Makefile.am
 
-if USE_GMALG
-plugin_LTLIBRARIES = gmalg.la
+AM_CPPFLAGS = \
+	-I$(top_srcdir)/src/libstrongswan \
+	-I/usr/local/include/gmssl
+
+AM_CFLAGS = \
+	$(PLUGIN_CFLAGS)
+
+if MONOLITHIC
+noinst_LTLIBRARIES = libstrongswan-gmalg.la
+libstrongswan_gmalg_la_LIBADD = -L/usr/local/lib -lgmssl
+else
+plugin_LTLIBRARIES = libstrongswan-gmalg.la
+libstrongswan_gmalg_la_LIBADD = \
+	$(top_builddir)/src/libstrongswan/libstrongswan.la \
+	-L/usr/local/lib \
+	-lgmssl
 endif
 
-gmalg_la_SOURCES = \
+libstrongswan_gmalg_la_SOURCES = \
 	gmalg_plugin.c \
 	gmalg_plugin.h \
 	gmalg_hasher.c \
@@ -12,16 +26,4 @@ gmalg_la_SOURCES = \
 	gmalg_crypter.c \
 	gmalg_crypter.h
 
-gmalg_la_CFLAGS = \
-	$(AM_CFLAGS) \
-	-I$(top_srcdir)/src/libstrongswan \
-	-I/usr/local/include/gmssl
-
-gmalg_la_LDFLAGS = \
-	-module -avoid-version \
-	-no-undefined \
-	-L/usr/local/lib \
-	-lgmssl
-
-gmalg_la_LIBADD = \
-	$(top_builddir)/src/libstrongswan/libstrongswan.la
+libstrongswan_gmalg_la_LDFLAGS = -module -avoid-version
