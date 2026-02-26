@@ -1,0 +1,103 @@
+# PQGM-IKEv2 Project .gitignore
+
+# Claude Code / AI Assistant files
+.claude/
+.claude.json
+.claude.json.backup
+
+# Build outputs
+*.o
+*.so
+*.a
+*.lo
+*.la
+.build/
+build/
+dist/
+
+# strongSwan specific
+strongswan/autom4te.cache/
+strongswan/aclocal.m4
+strongswan/compile
+strongswan/config.guess
+strongswan/config.sub
+strongswan/depcomp
+strongswan/install-sh
+strongswan/ltmain.sh
+strongswan/missing
+strongswan/Makefile
+strongswan/Makefile.in
+strongswan/config.h
+strongswan/config.h.in
+strongswan/config.log
+strongswan/config.status
+strongswan/libtool
+strongswan/stamp-h1
+strongswan/.deps/
+strongswan/.libs/
+strongswan/*/.libs/
+strongswan/*/.deps/
+
+# GmSSL build artifacts
+GmSSL/.libs/
+GmSSL/*.o
+GmSSL/*.so*
+GmSSL/*.a
+GmSSL/config.status
+GmSSL/config.log
+GmSSL/Makefile
+
+# Test results and temporary files
+*.pcap
+*.pcapng
+*.log
+*.tmp
+results/*.pcap
+results/*.log
+pqgm-test/results/*.pcap
+
+# Certificate and key files (DO NOT commit private keys!)
+*.pem
+*.key
+*.p12
+*.pfx
+# Exception: CA certificates can be committed
+!caCert.pem
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# OS files
+.DS_Store
+Thumbs.db
+*.bak
+
+# Temporary test data
+test_temp/
+tmp/
+
+# Python cache (if any Python scripts)
+__pycache__/
+*.pyc
+*.pyo
+
+# Node modules (if any)
+node_modules/
+
+# Large binary files
+*.pdf
+*.docx
+*.doc
+*.xlsx
+*.zip
+*.tar.gz
+*.deb
+# Private keys - NEVER commit these
+tests/initiator/*Key.pem
+tests/responder/*Key.pem
+tests/*Key.pem

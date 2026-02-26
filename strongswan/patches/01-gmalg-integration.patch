@@ -1,0 +1,16 @@
+--- a/configure.ac
++++ b/configure.ac
+@@ -771,6 +771,12 @@ AC_ARG_ENABLE([nm],
+ 		[], [enable_nm=no])
+ ADD_PLUGIN([nm], [s charon swanctl pki scripts nm cmd])
+ 
++# 国密算法插件 (gmalg)
++ARG_ENABL_SET([gmalg], [enable Chinese National Crypto Algorithms (SM2/SM3/SM4) plugin])
++if test x$enable_gmalg = xyes; then
++	AC_CHECK_HEADERS([gmssl/sm2.h gmssl/sm3.h gmssl/sm4.h],,
++		[AC_MSG_ERROR("GmSSL headers not found. Install GmSSL first.")])
++fi
++AM_CONDITIONAL(USE_GMALG, test x$enable_gmalg = xyes)
++ADD_PLUGIN([gmalg], [s charon swanctl pki scripts])
+ 
+ 末尾添加: src/libstrongswan/plugins/gmalg/Makefile
