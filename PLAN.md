@@ -166,13 +166,35 @@ cd /home/ipsec/strongswan && make -j$(nproc)
 ### 4.1 目标
 实现 SM2-KEM 作为 strongSwan 的 Key Exchange Method
 
-### 4.2 需要先验证的 GmSSL API
-```bash
-# 检查 GmSSL 是否支持 SM2-KEM
-grep -r "sm2_kem\|sm2_encrypt\|sm2_decrypt" /usr/local/include/gmssl/
+### 4.2 前置条件分析
+
+**已完成验证**:
+- ✅ strongSwan 6.0 ML-KEM 功能正常 (pqgm-test/results/final_report.txt)
+- ✅ IKE_INTERMEDIATE 机制工作正常
+- ✅ GmSSL sm2_encrypt/sm2_decrypt API 可用
+
+**SM2-KEM 协议依赖**:
+```
+IKE_INTERMEDIATE #0 (r0) → 双证书分发 (SignCert + EncCert)
+        ↓
+IKE_INTERMEDIATE #1 → SM2-KEM (使用 EncCert 公钥加密)
 ```
 
-### 4.3 实现步骤
+### 4.3 设计决策点
+
+**问题**: SM2-KEM 需要访问对端 EncCert，但标准 KE 接口无此能力
+
+**方案对比**:
+
+| 方案 | 优点 | 缺点 | 优先级 |
+|------|------|------|--------|--------|
+| **A. 简化版** | 无需证书，独立可测 | 不符合协议设计 | 低 |
+| **B. 完整版** | 符合协议，功能完整 | 实现复杂度高 | 高 |
+| **C. 分阶段** | 先核心后集成 | 需要两轮实现 | 中 |
+
+**推荐**: 先实现方案 A 验证核心逻辑，后续升级到方案 B
+
+### 4.4 GmSSL API 验证
 
 **Step 1: 创建 gmalg_ke.c/h**
 ```c
@@ -280,13 +302,25 @@ tcpdump -i eth0 -w pqgm_ike.pcap udp port 500 or udp port 4500
 ## 执行顺序
 
 ```
-[⏳] Phase 1: 安装与基础验证
-[ ] Phase 2: SM2 Signer 功能测试
-[ ] Phase 3: SM4 CTR 模式实现
-[ ] Phase 4: SM2-KEM 密钥交换实现
-[ ] Phase 5: 端到端测试
-[ ] Phase 6: 性能评估与论文数据收集
+[✅] Phase 0: 文档发现与验证
+[✅] Phase 1: 安装与基础验证
+[✅] Phase 2: SM2 Signer 功能测试
+[✅] Phase 3: SM4 CTR 模式实现
+[⏳] Phase 4: SM2-KEM 密钥交换实现 (调研中)
+[   ] Phase 4a: SM2-KEM 核心算法 (简化版)
+[   ] Phase 4b: r0 双证书分发机制
+[   ] Phase 4c: SM2-KEM 证书集成
+[✅] Phase 5: ML-KEM 基础功能验证
+[   ] Phase 6: 完整端到端测试
+[   ] Phase 7: 性能评估与论文数据收集
 ```
+
+### 更新说明
+
+**2026-02-26 更新**:
+- 确认 ML-KEM 和 IKE_INTERMEDIATE 基础功能已验证正常
+- SM2-KEM 实现需要先解决 r0 证书分发的依赖问题
+- 正在评估 SM2-KEM 实现方案（简化版 vs 完整版）
 
 ---
 
