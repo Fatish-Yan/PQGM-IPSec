@@ -239,6 +239,75 @@ static int test_sm4_cbc(void)
 	return result;
 }
 
+/* Test SM4 CTR Encryption */
+static int test_sm4_ctr(void)
+{
+	printf("\n=== Testing SM4 CTR Encryption ===\n");
+
+	gmalg_sm4_crypter_t *crypter;
+	uint8_t key[16] = {0};
+	uint8_t plaintext[32] = {0};
+	uint8_t iv[16] = {0};
+	chunk_t key_chunk, pt_chunk, iv_chunk;
+	int result = 0;
+
+	/* Create SM4 CTR crypter */
+	memset(key, 0xAA, 16);
+	memset(plaintext, 0xDD, 32);
+	memset(iv, 0xFF, 16);
+
+	key_chunk = chunk_create(key, 16);
+	pt_chunk = chunk_create(plaintext, 32);
+	iv_chunk = chunk_create(iv, 16);
+
+	crypter = gmalg_sm4_ctr_crypter_create(ENCR_SM4_CTR, 16);
+	if (!crypter) {
+		printf("ERROR: Failed to create SM4 CTR crypter\n");
+		return -1;
+	}
+	printf("SM4 CTR crypter created successfully\n");
+
+	/* Set key */
+	if (!((crypter_t*)crypter)->set_key((crypter_t*)crypter, key_chunk)) {
+		printf("ERROR: Failed to set SM4 key\n");
+		((crypter_t*)crypter)->destroy((crypter_t*)crypter);
+		return -1;
+	}
+	printf("SM4 key set successfully (128-bit)\n");
+
+	/* Test encryption */
+	chunk_t encrypted = pt_chunk;
+	if (!((crypter_t*)crypter)->encrypt((crypter_t*)crypter, pt_chunk, iv_chunk, &encrypted)) {
+		printf("ERROR: Encryption failed!\n");
+		result = -1;
+	} else {
+		printf("Plaintext: ");
+		print_hex("", plaintext, 16);
+		print_hex("IV/CTR", iv, 16);
+		print_hex("Encrypted", encrypted.ptr, 16);
+
+		/* Test decryption */
+		chunk_t decrypted = encrypted;
+		if (!((crypter_t*)crypter)->decrypt((crypter_t*)crypter, encrypted, iv_chunk, &decrypted)) {
+			printf("ERROR: Decryption failed!\n");
+			result = -1;
+		} else {
+			print_hex("Decrypted", decrypted.ptr, 16);
+
+			/* Verify */
+			if (memcmp(decrypted.ptr, plaintext, 16) == 0) {
+				printf("SM4 CTR encryption/decryption test: PASSED\n");
+			} else {
+				printf("ERROR: Decryption mismatch!\n");
+				result = -1;
+			}
+		}
+	}
+
+	((crypter_t*)crypter)->destroy((crypter_t*)crypter);
+	return result;
+}
+
 /* Test SM2 Signature Algorithm */
 static int test_sm2_signer(void)
 {
@@ -337,6 +406,7 @@ int main(int argc, char *argv[])
 	if (test_sm3_prf() < 0) failed++;
 	if (test_sm4_ecb() < 0) failed++;
 	if (test_sm4_cbc() < 0) failed++;
+	if (test_sm4_ctr() < 0) failed++;
 	if (test_sm2_signer() < 0) failed++;
 
 	printf("\n===========================================\n");
