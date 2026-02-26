@@ -4,10 +4,17 @@
  * gmalg_hasher.c - SM3 Hash Algorithm Implementation
  */
 
-#include "gmalg_hasher.h"
+#include <string.h>
 
+#include <library.h>
+#include <crypto/hashers/hasher.h>
+#include <crypto/prfs/prf.h>
 #include <gmssl/sm3.h>
-#include "hashers/hasher.h"
+
+#include "gmalg_hasher.h"
+#include "gmalg_plugin.h"
+
+#define SM3_DIGEST_SIZE 32  /* SM3 produces 256-bit (32 byte) hash */
 
 typedef struct private_gmalg_sm3_hasher_t private_gmalg_sm3_hasher_t;
 
@@ -28,52 +35,71 @@ struct private_gmalg_sm3_hasher_t {
 };
 
 /**
- * hash function
+ * Reset the SM3 context
  */
-static void sm3_hash(private_gmalg_sm3_hasher_t *this, const chunk_t data)
-{
-	sm3_update(&this->ctx, data.ptr, data.len);
-}
-
-/**
- * get_hash_size function
- */
-static size_t get_hash_size(private_gmalg_sm3_hasher_t *this)
-{
-	return SM3_DIGEST_SIZE;
-}
-
-/**
- * allocate_hash function
- */
-static uint8_t* allocate_hash(private_gmalg_sm3_hasher_t *this, chunk_t *data)
-{
-	*data = chunk_alloc(SM3_DIGEST_SIZE);
-	sm3_finish(&this->ctx, data->ptr);
-	return data->ptr;
-}
-
-/**
- * get_hash function
- */
-static uint8_t* get_hash(private_gmalg_sm3_hasher_t *this, uint8_t *buf)
-{
-	sm3_finish(&this->ctx, buf);
-	return buf;
-}
-
-/**
- * reset function
- */
-static void reset(private_gmalg_sm3_hasher_t *this)
+static void sm3_reset(private_gmalg_sm3_hasher_t *this)
 {
 	sm3_init(&this->ctx);
 }
 
 /**
- * destroy function
+ * Update SM3 with data
  */
-static void destroy(private_gmalg_sm3_hasher_t *this)
+static void sm3_update_ctx(private_gmalg_sm3_hasher_t *this, const uint8_t *data, size_t len)
+{
+	sm3_update(&this->ctx, data, len);
+}
+
+/**
+ * Finalize SM3 and get digest
+ */
+static void sm3_final(private_gmalg_sm3_hasher_t *this, uint8_t *digest)
+{
+	sm3_finish(&this->ctx, digest);
+}
+
+METHOD(hasher_t, reset, bool,
+	private_gmalg_sm3_hasher_t *this)
+{
+	sm3_reset(this);
+	return TRUE;
+}
+
+METHOD(hasher_t, get_hash, bool,
+	private_gmalg_sm3_hasher_t *this, chunk_t data, uint8_t *hash)
+{
+	sm3_update_ctx(this, data.ptr, data.len);
+	if (hash != NULL)
+	{
+		sm3_final(this, hash);
+		reset(this);
+	}
+	return TRUE;
+}
+
+METHOD(hasher_t, allocate_hash, bool,
+	private_gmalg_sm3_hasher_t *this, chunk_t data, chunk_t *hash)
+{
+	sm3_update_ctx(this, data.ptr, data.len);
+	if (hash != NULL)
+	{
+		hash->ptr = malloc(SM3_DIGEST_SIZE);
+		hash->len = SM3_DIGEST_SIZE;
+
+		sm3_final(this, hash->ptr);
+		reset(this);
+	}
+	return TRUE;
+}
+
+METHOD(hasher_t, get_hash_size, size_t,
+	private_gmalg_sm3_hasher_t *this)
+{
+	return SM3_DIGEST_SIZE;
+}
+
+METHOD(hasher_t, hasher_destroy, void,
+	private_gmalg_sm3_hasher_t *this)
 {
 	free(this);
 }
@@ -81,41 +107,49 @@ static void destroy(private_gmalg_sm3_hasher_t *this)
 /*
  * see header file
  */
-gmalg_sm3_hasher_t* gmalg_sm3_hasher_create()
+gmalg_sm3_hasher_t* gmalg_sm3_hasher_create(hash_algorithm_t algo)
 {
 	private_gmalg_sm3_hasher_t *this;
 
+	/* Only support SM3 */
+	if (algo != HASH_SM3)
+	{
+		return NULL;
+	}
+
 	INIT(this,
 		.public = {
-			.hasher = {
-				.hash = (void(*)(hasher_t*, const chunk_t))sm3_hash,
-				.get_hash_size = (size_t(*)(hasher_t*))get_hash_size,
-				.allocate_hash = (uint8_t*(*)(hasher_t*, chunk_t*))allocate_hash,
-				.get_hash = (uint8_t*(*)(hasher_t*, uint8_t*))get_hash,
-				.reset = (void(*)(hasher_t*))reset,
-				.destroy = (void(*)(hasher_t*))destroy,
+			.hasher_interface = {
+				.get_hash = _get_hash,
+				.allocate_hash = _allocate_hash,
+				.get_hash_size = _get_hash_size,
+				.reset = _reset,
+				.destroy = _hasher_destroy,
 			},
 		},
 	);
 
-	sm3_init(&this->ctx);
+	/* initialize SM3 context */
+	sm3_reset(this);
 
-	return &this->public;
+	return &(this->public);
 }
 
 /*
  * SM3 PRF Implementation
  */
-#include "prfs/prf.h"
 
 typedef struct private_gmalg_sm3_prf_t private_gmalg_sm3_prf_t;
 
+/**
+ * Private data of SM3 PRF
+ */
 struct private_gmalg_sm3_prf_t {
 
 	/**
 	 * public prf interface
 	 */
-	prf_t public;
+	gmalg_sm3_prf_t public;
 
 	/**
 	 * Key
@@ -123,57 +157,66 @@ struct private_gmalg_sm3_prf_t {
 	chunk_t key;
 };
 
-METHOD(prf_t, get_bytes, size_t,
+METHOD(prf_t, get_bytes, bool,
 	private_gmalg_sm3_prf_t *this, chunk_t seed, uint8_t *bytes)
 {
 	SM3_CTX ctx;
 	uint8_t digest[SM3_DIGEST_SIZE];
-	size_t key_len = this->key.len;
 	size_t i;
 
-	/* HMAC-SM3 with key as specified in RFC 2104 */
+	/* Simple PRF using SM3: SM3(key || seed) repeated */
 	for (i = 0; i < seed.len; i += SM3_DIGEST_SIZE)
 	{
 		size_t len = (seed.len - i) < SM3_DIGEST_SIZE ? (seed.len - i) : SM3_DIGEST_SIZE;
 
-		/* Inner hash: H(K ^ ipad, text) */
 		sm3_init(&ctx);
-		/* TODO: implement proper HMAC-SM3 */
-		/* For now, simple SM3 of key || seed */
-		sm3_update(&ctx, this->key.ptr, key_len);
+		sm3_update(&ctx, this->key.ptr, this->key.len);
 		sm3_update(&ctx, seed.ptr + i, len);
 		sm3_finish(&ctx, digest);
 
 		memcpy(bytes + i, digest, len);
 	}
 
-	return seed.len;
+	return TRUE;
 }
 
-METHOD(prf_t, allocate_bytes, chunk_t,
-	private_gmalg_sm3_prf_t *this, chunk_t seed)
+METHOD(prf_t, allocate_bytes, bool,
+	private_gmalg_sm3_prf_t *this, chunk_t seed, chunk_t *bytes)
 {
-	chunk_t bytes = chunk_alloc(seed.len);
-	get_bytes(this, seed, bytes.ptr);
-	return bytes;
+	if (!bytes)
+	{
+		return FALSE;
+	}
+
+	bytes->ptr = malloc(seed.len);
+	bytes->len = seed.len;
+
+	return get_bytes(this, seed, bytes->ptr);
 }
 
-METHOD(prf_t, get_key, chunk_t,
+METHOD(prf_t, get_block_size, size_t,
 	private_gmalg_sm3_prf_t *this)
 {
-	return this->key;
+	return SM3_DIGEST_SIZE;
 }
 
-METHOD(prf_t, set_key, void,
+METHOD(prf_t, get_key_size, size_t,
+	private_gmalg_sm3_prf_t *this)
+{
+	return this->key.len;
+}
+
+METHOD(prf_t, set_key, bool,
 	private_gmalg_sm3_prf_t *this, chunk_t key)
 {
 	/* Free old key if exists */
 	chunk_free(&this->key);
 	/* Set new key */
 	this->key = chunk_clone(key);
+	return TRUE;
 }
 
-METHOD(prf_t, destroy, void,
+METHOD(prf_t, prf_destroy, void,
 	private_gmalg_sm3_prf_t *this)
 {
 	chunk_free(&this->key);
@@ -189,15 +232,16 @@ prf_t* gmalg_sm3_prf_create(chunk_t key)
 
 	INIT(this,
 		.public = {
-			.prf = {
+			.prf_interface = {
 				.get_bytes = _get_bytes,
 				.allocate_bytes = _allocate_bytes,
-				.get_key = _get_key,
+				.get_block_size = _get_block_size,
+				.get_key_size = _get_key_size,
 				.set_key = _set_key,
-				.destroy = _destroy,
+				.destroy = _prf_destroy,
 			},
 			.key = chunk_clone(key),
-		);
+		});
 
-	return &this->public;
+	return &this->public.prf_interface;
 }

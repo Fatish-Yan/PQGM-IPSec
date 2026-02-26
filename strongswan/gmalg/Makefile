@@ -143,8 +143,7 @@ LTLIBRARIES = $(plugin_LTLIBRARIES)
 gmalg_la_DEPENDENCIES =  \
 	$(top_builddir)/src/libstrongswan/libstrongswan.la
 am_gmalg_la_OBJECTS = gmalg_la-gmalg_plugin.lo \
-	gmalg_la-gmalg_hasher.lo gmalg_la-gmalg_crypter.lo \
-	gmalg_la-gmalg_signer.lo
+	gmalg_la-gmalg_hasher.lo gmalg_la-gmalg_crypter.lo
 gmalg_la_OBJECTS = $(am_gmalg_la_OBJECTS)
 AM_V_lt = $(am__v_lt_$(V))
 am__v_lt_ = $(am__v_lt_$(AM_DEFAULT_VERBOSITY))
@@ -171,8 +170,7 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
 am__depfiles_remade = ./$(DEPDIR)/gmalg_la-gmalg_crypter.Plo \
 	./$(DEPDIR)/gmalg_la-gmalg_hasher.Plo \
-	./$(DEPDIR)/gmalg_la-gmalg_plugin.Plo \
-	./$(DEPDIR)/gmalg_la-gmalg_signer.Plo
+	./$(DEPDIR)/gmalg_la-gmalg_plugin.Plo
 am__mv = mv -f
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
@@ -475,9 +473,7 @@ gmalg_la_SOURCES = \
 	gmalg_hasher.c \
 	gmalg_hasher.h \
 	gmalg_crypter.c \
-	gmalg_crypter.h \
-	gmalg_signer.c \
-	gmalg_signer.h
+	gmalg_crypter.h
 
 gmalg_la_CFLAGS = \
 	$(AM_CFLAGS) \
@@ -574,7 +570,6 @@ distclean-compile:
 include ./$(DEPDIR)/gmalg_la-gmalg_crypter.Plo # am--include-marker
 include ./$(DEPDIR)/gmalg_la-gmalg_hasher.Plo # am--include-marker
 include ./$(DEPDIR)/gmalg_la-gmalg_plugin.Plo # am--include-marker
-include ./$(DEPDIR)/gmalg_la-gmalg_signer.Plo # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -626,13 +621,6 @@ gmalg_la-gmalg_crypter.lo: gmalg_crypter.c
 #	$(AM_V_CC)source='gmalg_crypter.c' object='gmalg_la-gmalg_crypter.lo' libtool=yes \
 #	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
 #	$(AM_V_CC_no)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(gmalg_la_CFLAGS) $(CFLAGS) -c -o gmalg_la-gmalg_crypter.lo `test -f 'gmalg_crypter.c' || echo '$(srcdir)/'`gmalg_crypter.c
-
-gmalg_la-gmalg_signer.lo: gmalg_signer.c
-	$(AM_V_CC)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(gmalg_la_CFLAGS) $(CFLAGS) -MT gmalg_la-gmalg_signer.lo -MD -MP -MF $(DEPDIR)/gmalg_la-gmalg_signer.Tpo -c -o gmalg_la-gmalg_signer.lo `test -f 'gmalg_signer.c' || echo '$(srcdir)/'`gmalg_signer.c
-	$(AM_V_at)$(am__mv) $(DEPDIR)/gmalg_la-gmalg_signer.Tpo $(DEPDIR)/gmalg_la-gmalg_signer.Plo
-#	$(AM_V_CC)source='gmalg_signer.c' object='gmalg_la-gmalg_signer.lo' libtool=yes \
-#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
-#	$(AM_V_CC_no)$(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(gmalg_la_CFLAGS) $(CFLAGS) -c -o gmalg_la-gmalg_signer.lo `test -f 'gmalg_signer.c' || echo '$(srcdir)/'`gmalg_signer.c
 
 mostlyclean-libtool:
 	-rm -f *.lo
@@ -770,7 +758,6 @@ distclean: distclean-am
 		-rm -f ./$(DEPDIR)/gmalg_la-gmalg_crypter.Plo
 	-rm -f ./$(DEPDIR)/gmalg_la-gmalg_hasher.Plo
 	-rm -f ./$(DEPDIR)/gmalg_la-gmalg_plugin.Plo
-	-rm -f ./$(DEPDIR)/gmalg_la-gmalg_signer.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -819,7 +806,6 @@ maintainer-clean: maintainer-clean-am
 		-rm -f ./$(DEPDIR)/gmalg_la-gmalg_crypter.Plo
 	-rm -f ./$(DEPDIR)/gmalg_la-gmalg_hasher.Plo
 	-rm -f ./$(DEPDIR)/gmalg_la-gmalg_plugin.Plo
-	-rm -f ./$(DEPDIR)/gmalg_la-gmalg_signer.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

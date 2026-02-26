@@ -7,11 +7,8 @@
 #ifndef GMALG_CRYPTER_H_
 #define GMALG_CRYPTER_H_
 
-#include "crypters/crypter.h"
+#include <crypto/crypters/crypter.h>
 
-/**
- * SM4 Crypter
- */
 typedef struct gmalg_sm4_crypter_t gmalg_sm4_crypter_t;
 
 struct gmalg_sm4_crypter_t {
@@ -19,28 +16,34 @@ struct gmalg_sm4_crypter_t {
 	/**
 	 * Public crypter interface
 	 */
-	crypter_t crypter;
+	crypter_t crypter_interface;
 };
 
 /**
  * Create an SM4 ECB crypter instance
  *
+ * @param algo		encryption algorithm (must be ENCR_SM4_ECB)
+ * @param key_size	key size in bytes (must be 16 for SM4)
  * Returns crypter instance
  */
-gmalg_sm4_crypter_t* gmalg_sm4_crypter_create(void);
+gmalg_sm4_crypter_t* gmalg_sm4_crypter_create(encryption_algorithm_t algo, size_t key_size);
 
 /**
  * Create an SM4 CBC crypter instance
  *
+ * @param algo		encryption algorithm (must be ENCR_SM4_CBC)
+ * @param key_size	key size in bytes (must be 16 for SM4)
  * Returns crypter instance
  */
-gmalg_sm4_crypter_t* gmalg_sm4_cbc_crypter_create(void);
+gmalg_sm4_crypter_t* gmalg_sm4_cbc_crypter_create(encryption_algorithm_t algo, size_t key_size);
 
 /**
  * Create an SM4 CTR crypter instance
  *
+ * @param algo		encryption algorithm (must be ENCR_SM4_CTR)
+ * @param key_size	key size in bytes (must be 16 for SM4)
  * Returns crypter instance
  */
-gmalg_sm4_crypter_t* gmalg_sm4_ctr_crypter_create(void);
+gmalg_sm4_crypter_t* gmalg_sm4_ctr_crypter_create(encryption_algorithm_t algo, size_t key_size);
 
 #endif /* GMALG_CRYPTER_H_ */

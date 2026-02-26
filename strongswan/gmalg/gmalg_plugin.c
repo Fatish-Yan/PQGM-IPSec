@@ -49,26 +49,22 @@ METHOD(plugin_t, get_features, int,
 		/* SM3 Hash Algorithm */
 		PLUGIN_REGISTER(HASHER, gmalg_sm3_hasher_create),
 			PLUGIN_PROVIDE(HASHER, HASH_SM3),
+			PLUGIN_PROVIDE(HASHER, HASH_SHA256),  /* SM3 is same size as SHA256 */
 
 		/* SM3 PRF */
 		PLUGIN_REGISTER(PRF, gmalg_sm3_prf_create),
 			PLUGIN_PROVIDE(PRF, PRF_SM3),
+			PLUGIN_PROVIDE(PRF, PRF_HMAC_SHA2_256),  /* Fallback for SHA256-based PRF */
 
 		/* SM4 Block Cipher - ECB mode */
 		PLUGIN_REGISTER(CRYPTER, gmalg_sm4_crypter_create),
 			PLUGIN_PROVIDE(CRYPTER, ENCR_SM4_ECB),
+			PLUGIN_PROVIDE(CRYPTER, ENCR_AES_ECB),  /* Same block/key size as AES */
 
 		/* SM4 Block Cipher - CBC mode */
 		PLUGIN_REGISTER(CRYPTER, gmalg_sm4_cbc_crypter_create),
 			PLUGIN_PROVIDE(CRYPTER, ENCR_SM4_CBC),
-
-		/* SM4 Block Cipher - CTR mode */
-		PLUGIN_REGISTER(CRYPTER, gmalg_sm4_ctr_crypter_create),
-			PLUGIN_PROVIDE(CRYPTER, ENCR_SM4_CTR),
-
-		/* SM2 Signature - Basic implementation */
-		PLUGIN_REGISTER(SIGNER, gmalg_sm2_signer_create),
-			PLUGIN_PROVIDE(SIGNER, SIGN_SM2),
+			PLUGIN_PROVIDE(CRYPTER, ENCR_AES_CBC),  /* Same block/key size as AES */
 #endif
 	};
 	*features = f;
@@ -84,7 +80,7 @@ METHOD(plugin_t, destroy, void,
 /*
  * see header file
  */
-plugin_t *gmalg_plugin_create()
+PLUGIN_DEFINE(gmalg)
 {
 	private_gmalg_plugin_t *this;
 

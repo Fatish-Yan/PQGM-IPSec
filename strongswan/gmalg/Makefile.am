@@ -10,9 +10,7 @@ gmalg_la_SOURCES = \
 	gmalg_hasher.c \
 	gmalg_hasher.h \
 	gmalg_crypter.c \
-	gmalg_crypter.h \
-	gmalg_signer.c \
-	gmalg_signer.h
+	gmalg_crypter.h
 
 gmalg_la_CFLAGS = \
 	$(AM_CFLAGS) \

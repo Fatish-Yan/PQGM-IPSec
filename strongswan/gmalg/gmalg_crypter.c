@@ -4,13 +4,16 @@
  * gmalg_crypter.c - SM4 Block Cipher Implementation
  */
 
-#include "gmalg_crypter.h"
-
+#include <string.h>
 #include <gmssl/sm4.h>
-#include "crypters/crypter.h"
 
-#define SM4_KEY_SIZE 16  /* 128-bit key */
-#define SM4_BLOCK_SIZE 16  /* 128-bit block */
+#include <library.h>
+#include <crypto/crypters/crypter.h>
+#include <gmssl/sm4.h>
+
+#include "gmalg_crypter.h"
+#include "gmalg_plugin.h"
+
 
 typedef struct private_gmalg_sm4_crypter_t private_gmalg_sm4_crypter_t;
 
@@ -34,101 +37,160 @@ struct private_gmalg_sm4_crypter_t {
 	gmalg_sm4_crypter_t public;
 
 	/**
+	 * SM4 encryption key
+	 */
+	SM4_KEY enc_key;
+
+	/**
+	 * SM4 decryption key
+	 */
+	SM4_KEY dec_key;
+
+	/**
 	 * SM4 mode
 	 */
 	sm4_mode_t mode;
 
 	/**
-	 * Encryption/Decryption context
+	 * Key size
 	 */
-	union {
-		SM4_ECB_CTX ecb;
-		SM4_CBC_CTX cbc;
-		SM4_CTX ctr;
-	} ctx;
-
-	/**
-	 * Initialization Vector (for CBC and CTR modes)
-	 */
-	uint8_t iv[SM4_BLOCK_SIZE];
-
-	/**
-	 * Key
-	 */
-	uint8_t key[SM4_KEY_SIZE];
+	size_t key_size;
 };
 
-/**
- * decrypt_block function
- */
-static void decrypt_block(private_gmalg_sm4_crypter_t *this,
-						uint8_t *block)
+METHOD(crypter_t, encrypt, bool,
+	private_gmalg_sm4_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *encrypted)
 {
-	switch (this->mode)
-	{
-		case SM4_MODE_ECB:
-			sm4_ecb_decrypt_block(this->ctx.ecb, block);
-			break;
-		case SM4_MODE_CBC:
-			sm4_cbc_decrypt(&this->ctx.cbc, this->iv, block);
-			break;
-		case SM4_MODE_CTR:
-			/* CTR mode uses encrypt for both directions */
-			sm4_ctr_encrypt(&this->ctx.ctr, this->iv, block, SM4_BLOCK_SIZE, block);
-			break;
-	}
-}
+	uint8_t *out, *in;
+	size_t nblocks;
 
-/**
- * encrypt_block function
- */
-static void encrypt_block(private_gmalg_sm4_crypter_t *this,
-						uint8_t *block)
-{
-	switch (this->mode)
+	in = data.ptr;
+	out = data.ptr;
+	if (encrypted)
 	{
-		case SM4_MODE_ECB:
-			sm4_ecb_encrypt_block(this->ctx.ecb, block);
-			break;
-		case SM4_MODE_CBC:
-			sm4_cbc_encrypt(&this->ctx.cbc, this->iv, block);
-			break;
-		case SM4_MODE_CTR:
-			sm4_ctr_encrypt(&this->ctx.ctr, this->iv, block, SM4_BLOCK_SIZE, block);
-			break;
-	}
-}
-
-/**
- * set_key function
- */
-static void set_key(private_gmalg_sm4_crypter_t *this, const uint8_t *key, size_t key_len)
-{
-	if (key_len != SM4_KEY_SIZE)
-	{
-		return;  /* SM4 only supports 128-bit key */
+		*encrypted = chunk_alloc(data.len);
+		out = encrypted->ptr;
 	}
 
-	memcpy(this->key, key, SM4_KEY_SIZE);
+	nblocks = data.len / SM4_BLOCK_SIZE;
 
 	switch (this->mode)
 	{
 		case SM4_MODE_ECB:
-			sm4_ecb_key_init(this->ctx.ecb, this->key);
+			sm4_encrypt_blocks(&this->enc_key, in, nblocks, out);
 			break;
+
 		case SM4_MODE_CBC:
-			sm4_cbc_key_init(&this->ctx.cbc, this->key);
+			if (iv.len < SM4_BLOCK_SIZE)
+			{
+				return FALSE;
+			}
+			{
+				uint8_t iv_copy[SM4_BLOCK_SIZE];
+				memcpy(iv_copy, iv.ptr, SM4_BLOCK_SIZE);
+				sm4_cbc_encrypt_blocks(&this->enc_key, iv_copy, in, nblocks, out);
+			}
 			break;
+
 		case SM4_MODE_CTR:
-			sm4_ctr_key_init(&this->ctx.ctr, this->key);
+			if (iv.len < SM4_BLOCK_SIZE)
+			{
+				return FALSE;
+			}
+			{
+				uint8_t ctr[SM4_BLOCK_SIZE];
+				memcpy(ctr, iv.ptr, SM4_BLOCK_SIZE);
+				sm4_ctr_encrypt_blocks(&this->enc_key, ctr, in, nblocks, out);
+			}
 			break;
 	}
+
+	return TRUE;
 }
 
-/**
- * destroy function
- */
-static void destroy(private_gmalg_sm4_crypter_t *this)
+METHOD(crypter_t, decrypt, bool,
+	private_gmalg_sm4_crypter_t *this, chunk_t data, chunk_t iv, chunk_t *decrypted)
+{
+	uint8_t *out, *in;
+	size_t nblocks;
+
+	in = data.ptr;
+	out = data.ptr;
+	if (decrypted)
+	{
+		*decrypted = chunk_alloc(data.len);
+		out = decrypted->ptr;
+	}
+
+	nblocks = data.len / SM4_BLOCK_SIZE;
+
+	switch (this->mode)
+	{
+		case SM4_MODE_ECB:
+			/* For ECB, we use decrypt key */
+			sm4_encrypt_blocks(&this->dec_key, in, nblocks, out);
+			break;
+
+		case SM4_MODE_CBC:
+			if (iv.len < SM4_BLOCK_SIZE)
+			{
+				return FALSE;
+			}
+			{
+				uint8_t iv_copy[SM4_BLOCK_SIZE];
+				memcpy(iv_copy, iv.ptr, SM4_BLOCK_SIZE);
+				sm4_cbc_decrypt_blocks(&this->dec_key, iv_copy, in, nblocks, out);
+			}
+			break;
+
+		case SM4_MODE_CTR:
+			/* CTR mode uses same operation for encrypt and decrypt */
+			return encrypt(this, data, iv, decrypted);
+	}
+
+	return TRUE;
+}
+
+METHOD(crypter_t, get_block_size, size_t,
+	private_gmalg_sm4_crypter_t *this)
+{
+	if (this->mode == SM4_MODE_CTR)
+	{
+		return 1;  /* CTR mode can handle any size */
+	}
+	return SM4_BLOCK_SIZE;
+}
+
+METHOD(crypter_t, get_iv_size, size_t,
+	private_gmalg_sm4_crypter_t *this)
+{
+	if (this->mode == SM4_MODE_ECB)
+	{
+		return 0;
+	}
+	return SM4_BLOCK_SIZE;
+}
+
+METHOD(crypter_t, get_key_size, size_t,
+	private_gmalg_sm4_crypter_t *this)
+{
+	return this->key_size;
+}
+
+METHOD(crypter_t, set_key, bool,
+	private_gmalg_sm4_crypter_t *this, chunk_t key)
+{
+	if (key.len != SM4_KEY_SIZE)
+	{
+		return FALSE;
+	}
+	sm4_set_encrypt_key(&this->enc_key, key.ptr);
+	sm4_set_decrypt_key(&this->dec_key, key.ptr);
+	this->key_size = SM4_KEY_SIZE;
+	return TRUE;
+}
+
+METHOD(crypter_t, destroy, void,
+	private_gmalg_sm4_crypter_t *this)
 {
 	free(this);
 }
@@ -136,22 +198,34 @@ static void destroy(private_gmalg_sm4_crypter_t *this)
 /*
  * Generic SM4 crypter creator
  */
-static gmalg_sm4_crypter_t* gmalg_sm4_crypter_create_generic(sm4_mode_t mode)
+static gmalg_sm4_crypter_t* gmalg_sm4_crypter_create_generic(
+	encryption_algorithm_t algo, size_t key_size, sm4_mode_t mode)
 {
 	private_gmalg_sm4_crypter_t *this;
 
+	/* SM4 only supports 128-bit key */
+	if (key_size != SM4_KEY_SIZE)
+	{
+		return NULL;
+	}
+
 	INIT(this,
 		.public = {
-			.crypter = {
-				.encrypt = (void(*)(crypter_t*, uint8_t*))encrypt_block,
-				.decrypt = (void(*)(crypter_t*, uint8_t*))decrypt_block,
-				.set_key = (void(*)(crypter_t*, const uint8_t*, size_t))set_key,
-				.destroy = (void(*)(crypter_t*))destroy,
+			.crypter_interface = {
+				.encrypt = _encrypt,
+				.decrypt = _decrypt,
+				.get_block_size = _get_block_size,
+				.get_iv_size = _get_iv_size,
+				.get_key_size = _get_key_size,
+				.set_key = _set_key,
+				.destroy = _destroy,
 			},
-			.mode = mode,
-		});
+		},
+	);
 
-	memset(this->iv, 0, SM4_BLOCK_SIZE);
+	/* Initialize mode and key_size after INIT */
+	this->mode = mode;
+	this->key_size = key_size;
 
 	return &this->public;
 }
@@ -159,17 +233,29 @@ static gmalg_sm4_crypter_t* gmalg_sm4_crypter_create_generic(sm4_mode_t mode)
 /*
  * see header file
  */
-gmalg_sm4_crypter_t* gmalg_sm4_crypter_create(void)
+gmalg_sm4_crypter_t* gmalg_sm4_crypter_create(encryption_algorithm_t algo, size_t key_size)
 {
-	return gmalg_sm4_crypter_create_generic(SM4_MODE_ECB);
+	if (algo != ENCR_SM4_ECB)
+	{
+		return NULL;
+	}
+	return gmalg_sm4_crypter_create_generic(algo, key_size, SM4_MODE_ECB);
 }
 
-gmalg_sm4_crypter_t* gmalg_sm4_cbc_crypter_create(void)
+gmalg_sm4_crypter_t* gmalg_sm4_cbc_crypter_create(encryption_algorithm_t algo, size_t key_size)
 {
-	return gmalg_sm4_crypter_create_generic(SM4_MODE_CBC);
+	if (algo != ENCR_SM4_CBC)
+	{
+		return NULL;
+	}
+	return gmalg_sm4_crypter_create_generic(algo, key_size, SM4_MODE_CBC);
 }
 
-gmalg_sm4_crypter_t* gmalg_sm4_ctr_crypter_create(void)
+gmalg_sm4_crypter_t* gmalg_sm4_ctr_crypter_create(encryption_algorithm_t algo, size_t key_size)
 {
-	return gmalg_sm4_crypter_create_generic(SM4_MODE_CTR);
+	if (algo != ENCR_SM4_CTR)
+	{
+		return NULL;
+	}
+	return gmalg_sm4_crypter_create_generic(algo, key_size, SM4_MODE_CTR);
 }
