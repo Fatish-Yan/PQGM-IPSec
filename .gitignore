@@ -4,6 +4,7 @@
 .claude/
 .claude.json
 .claude.json.backup
+.worktrees/
 
 # Build outputs
 *.o
