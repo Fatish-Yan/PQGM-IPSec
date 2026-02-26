@@ -77,9 +77,9 @@ gmalg/
 #define HASH_SM3        1032    // SM3 Hash
 #define ENCR_SM4_ECB    1040    // SM4 ECB mode
 #define ENCR_SM4_CBC    1041    // SM4 CBC mode
-#define ENCR_SM4_CTR    1042    // SM4 CTR mode (planned)
+#define ENCR_SM4_CTR    1042    // SM4 CTR mode
 #define AUTH_SM2        1050    // SM2 Signature
-#define KE_SM2          1051    // SM2-KEM (planned)
+#define KE_SM2          1051    // SM2-KEM
 #define PRF_SM3         1052    // SM3 PRF
 ```
 
@@ -169,7 +169,7 @@ endif
 | SM4 CBC | ✅ Done | 175 MB/s |
 | SM4 CTR | ✅ Done | Functionality tested |
 | SM2 Signer | ✅ Done | DER encoding verified |
-| SM2-KEM | ⏳ In Design | Depends on r0 cert distribution |
+| SM2-KEM | ✅ Done | Simplified (temp key pairs), 140 bytes ciphertext |
 | IKE_INTERMEDIATE | ✅ Verified | ML-KEM tested (3 RTT, +4ms) |
 | ML-KEM integration | ✅ Verified | Working with strongSwan 6.0 ml plugin |
 
