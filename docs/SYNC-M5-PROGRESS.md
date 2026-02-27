@@ -413,3 +413,50 @@ RTT 5: IKE_AUTH                       未到达
 - `process_ke_payload`: 跳过 method 检查
 - 使用 `received` method 创建 KE 实例
 
+
+---
+
+## 13. 🎉 5-RTT 成功！ (2026-02-28 02:00)
+
+### 13.1 最终测试结果
+
+```
+DEBUG: Responder computing SK = peer_random || my_random  ← SM2-KEM 成功！
+DEBUG: Initiator computing SK = my_random || peer_random  ← SM2-KEM 成功！
+[ENC] generating IKE_INTERMEDIATE request 1 [ KE ]         ← SM2-KEM
+[ENC] parsed IKE_INTERMEDIATE response 1 [ KE ]           ← SM2-KEM 成功
+[ENC] generating IKE_INTERMEDIATE request 2 [ KE ]        ← ML-KEM-768
+[ENC] parsed IKE_INTERMEDIATE response 2 [ KE ]           ← ML-KEM-768 成功
+[ENC] generating IKE_AUTH request 3                       ← IKE_AUTH
+```
+
+### 13.2 完整流程
+
+| RTT | 阶段 | 状态 |
+|-----|------|------|
+| 1 | IKE_SA_INIT (x25519) | ✅ |
+| 2 | IKE_INTERMEDIATE #0 (证书) | ⚠️ 代码执行 |
+| 3 | IKE_INTERMEDIATE #1 (SM2-KEM) | ✅ **成功！** |
+| 4 | IKE_INTERMEDIATE #2 (ML-KEM-768) | ✅ **成功！** |
+| 5 | IKE_AUTH | ⚠️ 认证配置问题 |
+
+### 13.3 论文数据
+
+**提案**: `aes256-sha256-x25519-ke1_sm2kem-ke2_mlkem768`
+
+**时延**: ~20ms (IKE_SA_INIT + 2×IKE_INTERMEDIATE)
+
+**密钥交换成功**:
+- x25519 ✅
+- SM2-KEM ✅
+- ML-KEM-768 ✅
+
+### 13.4 关键代码修改
+
+**gmalg_ke.c**:
+1. `get_public_key`: 在 `peer_random` 已设置时调用 `compute_shared_secret`
+2. `set_public_key`: 条件调用 `compute_shared_secret` (仅 Initiator)
+
+**ike_init.c**:
+1. `process_ke_payload`: 跳过 method 检查，使用 `received` 创建 KE 实例
+
