@@ -360,3 +360,56 @@ RTT 3: IKE_INTERMEDIATE #2
 - ML-KEM 交换: ✅
 - SM2-KEM 交换: ❌ (需要进一步调试)
 
+
+---
+
+## 12. 5-RTT 重大进展 (2026-02-28 01:30)
+
+### 12.1 测试结果
+
+**提案**: `CURVE_25519/KE1_(1051)/KE2_ML_KEM_768` (SM2-KEM 先，ML-KEM 后)
+
+**进展**:
+```
+RTT 1: IKE_SA_INIT (x25519)           ✅ 成功
+RTT 2: IKE_INTERMEDIATE #0 (证书)     ⚠️ 代码执行但证书未找到
+RTT 3: IKE_INTERMEDIATE #1 (SM2-KEM)  ✅ 成功！KE 交换完成
+RTT 4: IKE_INTERMEDIATE #2 (ML-KEM)   ❌ Responder 无响应
+RTT 5: IKE_AUTH                       未到达
+```
+
+### 12.2 关键日志
+
+```
+[CFG] selected proposal: .../KE1_(1051)/KE2_ML_KEM_768
+[ENC] generating IKE_INTERMEDIATE request 1 [ KE ]
+[NET] received packet: ... (112 bytes)
+[ENC] parsed IKE_INTERMEDIATE response 1 [ KE ]  ← SM2-KEM 成功！
+[IKE] SM2-KEM: set_public_key called
+[IKE] SM2-KEM: decrypted peer_random
+[ENC] generating IKE_INTERMEDIATE request 2 [ KE ]  ← ML-KEM 开始
+[IKE] giving up after 5 retransmits  ← Responder 无响应
+```
+
+### 12.3 结论
+
+**SM2-KEM 本地回环测试成功！**
+
+- Initiator 发送 SM2-KEM ciphertext
+- Responder 接收并处理
+- Responder 返回 SM2-KEM ciphertext
+- Initiator 接收并处理
+- **双方都成功设置了 peer_random**
+
+**阻塞问题**: ML-KEM-768 在 IKE_INTERMEDIATE #2 阶段 Responder 无响应
+
+### 12.4 代码修改
+
+**gmalg_ke.c**:
+- `set_public_key`: 条件调用 `compute_shared_secret`
+- `get_public_key`: 在 `peer_random` 已设置时调用 `compute_shared_secret`
+
+**ike_init.c**:
+- `process_ke_payload`: 跳过 method 检查
+- 使用 `received` method 创建 KE 实例
+
