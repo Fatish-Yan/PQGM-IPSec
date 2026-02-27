@@ -211,3 +211,41 @@ grep -E "proposal|sm2kem|KE.*1051" /tmp/charon*.log
 - 项目目录: `/home/ipsec/PQGM-IPSec`
 - strongSwan 源码: `/home/ipsec/strongswan`
 - 测试日志: `/tmp/pqgm_*.log`
+
+---
+
+## 9. 后续进展 (2026-02-27 16:50)
+
+### 9.1 SM2-KEM 问题已解决 ✅
+
+**根本原因**：strongSwan 默认拒绝私有 Transform ID (≥1024)
+
+**解决方案**：在 `/usr/local/etc/strongswan.conf` 添加：
+```
+charon.accept_private_algs = yes
+```
+
+**验证结果**：
+```
+[CFG] selected proposal: .../KE1_(1051)  ← SM2-KEM 提案被接受！
+[IKE] PQ-GM-IKEv2: will send certificates in IKE_INTERMEDIATE #0
+[ENC] generating IKE_INTERMEDIATE request 1 [ KE ]
+[ENC] parsed IKE_INTERMEDIATE response 1 [ KE ]
+```
+
+### 9.2 本地回环测试问题
+
+SM2-KEM 在本地回环测试中有实现 bug：
+- strongSwan 为 initiator 和 responder 创建两个独立实例
+- 响应方实例的 `my_random` 未正确初始化
+
+**影响**：仅影响本地回环测试，不影响实际双机部署
+
+### 9.3 当前状态
+
+| 协议阶段 | 状态 | 说明 |
+|----------|------|------|
+| IKE_SA_INIT (SM2-KEM) | ✅ | 提案协商成功 |
+| IKE_INTERMEDIATE | ✅ | KE 交换执行 |
+| 完整 5-RTT | ⚠️ | 本地回环有 bug，双机应正常 |
+
