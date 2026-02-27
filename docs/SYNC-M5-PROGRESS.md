@@ -249,3 +249,43 @@ SM2-KEM 在本地回环测试中有实现 bug：
 | IKE_INTERMEDIATE | ✅ | KE 交换执行 |
 | 完整 5-RTT | ⚠️ | 本地回环有 bug，双机应正常 |
 
+
+---
+
+## 10. 后续进展 (2026-02-27 18:00)
+
+### 10.1 ID 注入实现完成 ✅
+
+**已完成的工作**：
+1. `gmalg_ke.c` - 添加 peer_id/my_id 字段和注入接口
+2. `ike_init.c` - 在 KE 创建后注入 ID
+
+**测试结果**：
+- SM2-KEM 提案被接受 ✅
+- ID 注入执行 ✅
+- 但 ID = %any（IKE_SA_INIT 阶段正常行为）
+
+### 10.2 当前阻塞问题
+
+**问题**：IKE_SA_INIT 阶段 ID = %any，无法查找证书
+
+**解决方案**：
+1. 使用 network namespace 模拟双机测试
+2. 或修改协议流程，将 SM2-KEM 移到 R0 证书分发后
+
+### 10.3 Network Namespace 测试准备
+
+**已创建**：
+- Network namespace: ns-init (192.168.100.10), ns-resp (192.168.100.20)
+- 连通性测试通过 ✅
+
+**待完成**：
+- 在每个 namespace 中配置和启动 charon
+- 执行完整的 5-RTT 测试
+
+### 10.4 测试文件
+
+- 设计文档: `docs/plans/2026-02-27-sm2kem-loopback-fix-design.md`
+- 实现计划: `docs/plans/2026-02-27-sm2kem-loopback-fix.md`
+- IKE 集成计划: `docs/plans/2026-02-27-ike-init-sm2kem-injection.md`
+- NS 测试指南: `docs/NS-TEST-GUIDE.md`
