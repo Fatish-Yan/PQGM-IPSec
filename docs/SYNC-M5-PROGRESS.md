@@ -289,3 +289,74 @@ SM2-KEM 在本地回环测试中有实现 bug：
 - 实现计划: `docs/plans/2026-02-27-sm2kem-loopback-fix.md`
 - IKE 集成计划: `docs/plans/2026-02-27-ike-init-sm2kem-injection.md`
 - NS 测试指南: `docs/NS-TEST-GUIDE.md`
+
+---
+
+## 11. 最终测试结果 (2026-02-27 21:40)
+
+### 11.1 Docker 测试环境
+
+**环境**：
+- Docker 容器: pqgm-initiator (172.28.0.10), pqgm-responder (172.28.0.20)
+- 使用 LD_PRELOAD 加载 gmssl 库
+
+### 11.2 测试结果
+
+**成功的部分**：
+- ✅ IKE_SA_INIT 提案协商: `KE1_ML_KEM_768/KE2_(1051)`
+- ✅ IKE_INTERMEDIATE #1 (ML-KEM-768 KE 交换)
+- ✅ PQ-GM-IKEv2 证书代码执行
+- ✅ SM2-KEM get_public_key 被调用
+- ✅ SM2-KEM my_random 生成
+- ✅ SM2-KEM ciphertext 返回
+
+**失败的部分**：
+- ❌ IKE_INTERMEDIATE #2: Responder 返回 `N(NO_PROP)`
+- ❌ 原因: Responder 无法处理 SM2-KEM (1051)
+
+### 11.3 问题分析
+
+**根本原因**：虽然 gmalg 插件加载成功，但 Responder 在处理第二个 KE 方法时无法识别 SM2-KEM (1051)。
+
+**可能的原因**：
+1. Responder 的 `create_ke(KE_SM2)` 失败
+2. Responder 的 `process_ke_payload` 无法解析 SM2-KEM KE payload
+3. Exchange 类型匹配问题
+
+### 11.4 已验证的协议流程
+
+```
+RTT 1: IKE_SA_INIT
+  - x25519 DH 交换 ✅
+  - 提案协商: ML-KEM-768 + SM2-KEM ✅
+
+RTT 2: IKE_INTERMEDIATE #1
+  - ML-KEM-768 KE 交换 ✅
+  - PQ-GM-IKEv2 证书分发代码执行 ✅
+
+RTT 3: IKE_INTERMEDIATE #2
+  - SM2-KEM KE 交换 ❌ (Responder 拒绝)
+```
+
+### 11.5 代码修改记录
+
+**gmalg_ke.c**：
+- 移除 peer_id/my_id 检查，使用 NULL 查找证书/私钥
+- 使用 EKU 查找 EncCert
+
+**ike_init.c**：
+- 添加 inject_sm2kem_ids() 函数
+- 使用 dlopen/dlsym 动态查找插件函数
+
+### 11.6 论文数据
+
+**3-RTT 协议 (x25519 + ML-KEM-768)**:
+- 提案协商: ✅
+- IKE_SA 建立: ✅
+- 协商时延: ~50-70ms
+
+**5-RTT 协议 (含 SM2-KEM)**:
+- 提案协商: ✅
+- ML-KEM 交换: ✅
+- SM2-KEM 交换: ❌ (需要进一步调试)
+
