@@ -197,3 +197,19 @@ IKE_AUTH: 后量子签名认证 (ML-DSA/SLH-DSA)
 - SignCert: 签名证书 (SM2) - IKE_INTERMEDIATE 阶段
 - EncCert: 加密证书 (SM2) - 用于 SM2-KEM
 - AuthCert: 认证证书 (ML-DSA/SLH-DSA) - IKE_AUTH 阶段
+
+---
+
+## 🚨 头等命令 (2026-02-27)
+
+**必须完成 PQ-GM-IKEv2 5-RTT 全流程测试并拿到论文数据！**
+
+这是最高优先级任务，必须完成！
+
+### 当前状态
+- x25519 + ML-KEM-768: ✅ 完全工作
+- SM2-KEM: 提案协商成功，但 ID=%any 导致证书查找失败
+
+### 解决方案
+使用预定义 ID - 在配置中指定对端 ID
+

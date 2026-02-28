@@ -1,0 +1,48 @@
+===========================================
+  GMALG Performance Benchmark
+  For Thesis Experimental Data
+===========================================
+Loaded plugins: 
+Test rounds: 10000
+Data size: 65536 bytes (64.00 KB)
+
+=== SM3 Hash Performance Benchmark ===
+Test rounds: 10000
+Data size: 65536 bytes (64.00 KB)
+Total time: 1.3964 seconds
+Time per hash: 0.139641 ms
+Throughput: 447.58 MB/s
+Hash operations/sec: 7161
+
+=== SM3 PRF Performance Benchmark ===
+Test rounds: 10000
+Key size: 32 bytes
+Seed size: 64 bytes
+Output size: 32 bytes
+Total time: 0.0030 seconds
+Time per PRF: 0.000304 ms
+PRF operations/sec: 3286783
+
+=== SM4 ECB Performance Benchmark ===
+Encryption:
+  Total time: 3.3169 seconds
+  Time per op: 0.331687 ms
+  Throughput: 188.43 MB/s
+Decryption:
+  Total time: 3.3734 seconds
+  Time per op: 0.337337 ms
+  Throughput: 185.27 MB/s
+
+=== SM4 CBC Performance Benchmark ===
+Encryption:
+  Total time: 4.1104 seconds
+  Time per op: 0.411040 ms
+  Throughput: 152.05 MB/s
+Decryption:
+  Total time: 3.4755 seconds
+  Time per op: 0.347549 ms
+  Throughput: 179.83 MB/s
+
+===========================================
+  Benchmark Complete!
+===========================================
