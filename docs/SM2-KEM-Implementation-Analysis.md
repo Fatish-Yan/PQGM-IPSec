@@ -211,6 +211,23 @@ METHOD(task_t, build_i, status_t,
 1. `/home/ipsec/strongswan/src/libcharon/sa/ikev2/tasks/ike_cert_post.c`
    - `build_i()`: 发起方在 IKE_INTERMEDIATE #0 无条件发送证书
 
+### 后续改进方向（低优先级）
+
+**方案 A（当前实现）**：发起方无条件发送证书
+- 优点：简单直接，绕过 SM2 证书不被 OpenSSL 解析的问题
+- 缺点：不完全符合 IKEv2 规范，可能在不需要证书的场景也发送
+
+**方案 B（后续改进）**：响应方在 IKE_SA_INIT 阶段发送 CERTREQ
+- 符合 RFC 7296 规范，触发 `CERT_SEND_IF_ASKED` 策略
+- **当前无法实现的原因**：
+  - SM2 CA 证书无法被 OpenSSL 解析（`Signature Algorithm: SM2-with-SM3`）
+  - `ike_cert_pre.c` 的 `build_certreqs()` 找不到可用的 CA 证书
+  - 因此 CERTREQ payload 为空，不会被添加到 IKE_SA_INIT 响应中
+- **需要的修改**：
+  1. 在 `ike_cert_pre.c` 中添加 GmSSL 证书解析逻辑
+  2. 或者在配置加载时预解析 SM2 CA 证书并存储 Subject Key Identifier
+- **优先级**：低（当前方案 A 已可正常工作）
+
 ---
 
 ## 问题 1：SM2-KEM 性能异常（31.4ms）
@@ -474,10 +491,12 @@ if (load_sm2_pubkey_from_file(SM2_PEER_PUBKEY_FILE, &sm2_peer_key) == 1)
 | 优先级 | 问题 | 影响 | 工作量 | 状态 |
 |--------|------|------|--------|------|
 | **P0** | 公钥提取机制 | 安全性 + 功能正确性 | 中 | ✅ **已修复** |
+| **P0.1** | 双向证书交换 | 功能正确性 | 低 | ✅ **已修复** |
 | **P1** | SM2-KEM 性能优化 | 用户体验 | 低 | 待处理 |
 | **P2** | IntAuth 绑定 | 安全性 | 高 | 待处理 |
 | **P3** | 后量子签名认证 | 完整性 | 高 | 待处理 |
 | **P4** | RFC 9370 密钥更新链验证 | 正确性验证 | 中 | 待处理 |
+| **P5** | CERTREQ 规范化 | 规范符合性 | 中 | 待处理（低优先级） |
 
 ---
 
