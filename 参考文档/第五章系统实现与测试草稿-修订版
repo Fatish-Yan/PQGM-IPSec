@@ -1,0 +1,598 @@
+# 第五章 系统实现与性能评估
+
+前文在理论层面对 PQ-GM-IKEv2 混合密钥交换协议进行了详细设计与形式化安全性证明。本章将从工程落地角度出发，阐述该协议在真实网络环境中的系统实现与验证过程。本研究以目前国际上支持标准最前沿的开源 IPsec 协议栈 strongSwan 6.0 为基础架构，通过开发国密算法插件（gmalg）、集成后量子密钥交换模块，构建了支持 5-RTT 混合交换的原型系统。本章将按照"密码算法层→协议层→功能验证→性能评估"的层次结构，详细介绍各模块的实现细节与测试结果。
+
+## 5.1 实验环境与系统总体架构
+
+### 5.1.1 软硬件运行环境
+
+为确保原型系统具备良好的性能与工业参考价值，本实验部署在两台基于 x86_64 架构的 VMware 虚拟机上，分别模拟 VPN 发起方（Initiator）与响应方（Responder）。软硬件配置如表 5-1 所示。
+
+**表 5-1 实验软硬件环境配置表**
+
+| 组件 | 规格/版本说明 |
+| :--- | :--- |
+| 操作系统 | Ubuntu 22.04.5 LTS |
+| 内核版本 | Linux 6.8.0-101-generic |
+| CPU | 13th Gen Intel Core i5-13490F（分配 4 核心） |
+| 内存 | 8 GB RAM |
+| 基础 IPsec 框架 | strongSwan 6.0.4（支持 RFC 9242/9370） |
+| 国密密码库 | GmSSL 3.1.3（提供 SM2/SM3/SM4 实现） |
+| 后量子算法 | strongSwan 内置 ml 插件（ML-KEM） |
+| 网络抓包工具 | Wireshark 4.0+ |
+| 开发工具 | GCC 11.x / CMake 3.22 |
+
+### 5.1.2 依赖库选型分析
+
+在依赖库选型上，本研究遵循"成熟稳定、标准兼容"的原则：
+
+**strongSwan 6.0.4**：目前极少数原生支持 RFC 9370（多重密钥交换）和 RFC 9242（中间交换）框架的协议栈。其内置的 ml 插件提供了 NIST FIPS 203 标准化的 ML-KEM 算法实现，无需额外依赖 liboqs 库。这为多轮后量子密钥交换提供了开箱即用的支持。
+
+**GmSSL 3.1.3**：由中国密码学界主导开发的开源国密算法库，完整支持 GM/T 0002-0004-2012 标准定义的 SM2/SM3/SM4 算法。相较于 OpenSSL 的国密补丁方案，GmSSL API 更为稳定，文档更为完善。
+
+**选型对比**：
+
+| 候选方案 | 优势 | 劣势 | 最终选择 |
+|---------|------|------|---------|
+| strongSwan + liboqs | OQS 项目生态完整 | 需额外编译依赖 | ❌ |
+| strongSwan + ml 插件 | 原生集成，无需外部依赖 | 仅支持 ML-KEM | ✅ |
+| Openswan + 自研 | 完全可控 | 工作量大，不支持 RFC 9370 | ❌ |
+
+### 5.1.3 系统总体架构
+
+strongSwan 采用用户态密钥协商守护进程（Charon）与内核态数据包处理（Linux XFRM）相分离的模块化架构。本研究对协议的改造完全集中于用户态的 Charon 进程，通过插件机制扩展功能，无需修改内核代码。
+
+**图 5-1 系统架构图**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        PQ-GM-IKEv2 原型系统                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  用户态 (Charon 守护进程)                                             │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                    插件层 (Plugins)                          │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │    │
+│  │  │  gmalg 插件  │  │   ml 插件    │  │   其他标准插件       │  │    │
+│  │  │             │  │             │  │                     │  │    │
+│  │  │ SM3 Hash    │  │ ML-KEM-768  │  │ x25519, AES, SHA   │  │    │
+│  │  │ SM3 PRF     │  │ ML-KEM-1024 │  │                    │  │    │
+│  │  │ SM4 ECB/CBC │  │             │  │                    │  │    │
+│  │  │ SM2 Sign    │  │             │  │                    │  │    │
+│  │  │ SM2-KEM     │  │             │  │                    │  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+│                              │                                      │
+│  ┌─────────────────────────────────────────────────────────────┐    │
+│  │                 协议层 (Protocol Engine)                     │    │
+│  │                                                             │    │
+│  │  IKE_SA_INIT → IKE_INTERMEDIATE #0/#1/#2 → IKE_AUTH        │    │
+│  │                                                             │    │
+│  │  • 双证书分发机制                                            │    │
+│  │  • RFC 9370 多重密钥交换                                     │    │
+│  │  • RFC 9242 中间交换支持                                     │    │
+│  └─────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  内核态 (Linux XFRM)                                                 │
+│  • IPsec ESP/AH 数据包加解密                                         │
+│  • 安全策略库 (SPD) / 安全关联库 (SAD)                               │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**gmalg 插件架构**：
+
+```
+gmalg/
+├── gmalg_plugin.c/h      # 插件入口，算法注册
+├── gmalg_hasher.c/h      # SM3 哈希 + PRF 实现
+├── gmalg_crypter.c/h     # SM4 ECB/CBC/CTR 实现
+├── gmalg_signer.c/h      # SM2 签名实现
+└── gmalg_ke.c/h          # SM2-KEM 密钥交换实现
+```
+
+---
+
+## 5.2 密码算法层实现
+
+本节详细介绍国密算法插件（gmalg）的实现细节，包括 SM3 哈希、SM4 对称加密、SM2 签名以及 SM2-KEM 密钥封装机制。
+
+### 5.2.1 SM3 哈希与 PRF 实现
+
+**算法概述**：SM3 是中国国家密码管理局发布的密码杂凑算法，输出 256 位（32 字节）哈希值，适用于数字签名和密钥派生场景。
+
+**接口封装**：本研究在 strongSwan 的 hasher_t 和 prf_t 接口基础上，封装 GmSSL 3.1.3 的 SM3 实现。
+
+```c
+// gmalg_hasher.c 核心结构
+typedef struct private_gmalg_sm3_hasher_t {
+    gmalg_sm3_hasher_t public;
+    SM3_CTX ctx;  // GmSSL SM3 上下文
+} private_gmalg_sm3_hasher_t;
+
+// 关键方法实现
+static void sm3_reset(private_gmalg_sm3_hasher_t *this) {
+    sm3_init(&this->ctx);
+}
+
+static void sm3_update(private_gmalg_sm3_hasher_t *this,
+                       const uint8_t *data, size_t len) {
+    sm3_update(&this->ctx, data, len);
+}
+
+static void sm3_final(private_gmalg_sm3_hasher_t *this, uint8_t *digest) {
+    sm3_finish(&this->ctx, digest);
+}
+```
+
+**GmSSL 3.1.3 API 注意事项**：与旧版本不同，GmSSL 3.x 不提供 `sm3_hash()` 便捷函数，必须使用 `SM3_CTX` 上下文的分步调用方式。
+
+**算法 ID 定义**：
+```c
+#define HASH_SM3    1032    // SM3 Hash（私有使用范围）
+#define PRF_SM3     1052    // SM3 PRF（私有使用范围）
+```
+
+**性能测试结果**：
+- 测试条件：10,000 次迭代，64 KB 数据块
+- 吞吐量：**443.35 MB/s**
+- 哈希操作速率：**7,094 次/秒**
+
+### 5.2.2 SM4 对称加密实现
+
+**算法概述**：SM4 是中国国家密码管理局发布的分组密码算法，分组长度和密钥长度均为 128 位（16 字节）。本研究实现了 ECB、CBC、CTR 三种工作模式。
+
+**接口封装**：基于 strongSwan 的 crypter_t 接口封装。
+
+```c
+// gmalg_crypter.c 核心结构
+typedef struct private_gmalg_sm4_crypter_t {
+    gmalg_sm4_crypter_t public;
+    SM4_KEY enc_key;         // 加密密钥
+    SM4_KEY dec_key;         // 解密密钥
+    sm4_mode_t mode;         // 加密模式
+    size_t key_size;         // 密钥大小（16 字节）
+} private_gmalg_sm4_crypter_t;
+
+typedef enum {
+    SM4_MODE_ECB = 0,
+    SM4_MODE_CBC = 1,
+    SM4_MODE_CTR = 2,
+} sm4_mode_t;
+```
+
+**关键实现**：
+```c
+METHOD(crypter_t, encrypt, bool,
+       private_gmalg_sm4_crypter_t *this,
+       chunk_t data, chunk_t iv, chunk_t *encrypted) {
+    size_t nblocks = data.len / SM4_BLOCK_SIZE;
+
+    switch (this->mode) {
+        case SM4_MODE_ECB:
+            sm4_encrypt_blocks(&this->enc_key, data.ptr, nblocks, encrypted->ptr);
+            break;
+        case SM4_MODE_CBC:
+            sm4_cbc_encrypt_blocks(&this->enc_key, iv_copy, data.ptr, nblocks, encrypted->ptr);
+            break;
+        case SM4_MODE_CTR:
+            sm4_ctr_encrypt_blocks(&this->enc_key, ctr, data.ptr, nblocks, encrypted->ptr);
+            break;
+    }
+    return TRUE;
+}
+```
+
+**算法 ID 定义**：
+```c
+#define ENCR_SM4_ECB    1040    // SM4 ECB 模式
+#define ENCR_SM4_CBC    1041    // SM4 CBC 模式
+#define ENCR_SM4_CTR    1042    // SM4 CTR 模式
+```
+
+**性能测试结果**：
+
+| 模式 | 加密吞吐量 | 解密吞吐量 |
+|------|-----------|-----------|
+| ECB | 189.45 MB/s | 189.94 MB/s |
+| CBC | 161.27 MB/s | 174.76 MB/s |
+| CTR | 175.32 MB/s | 175.28 MB/s |
+
+### 5.2.3 SM2 签名算法实现
+
+**算法概述**：SM2 是基于 256 位椭圆曲线的公钥密码算法，支持数字签名、密钥交换和公钥加密。本研究实现了其签名功能，用于 IKE_AUTH 阶段的身份认证。
+
+**接口封装**：基于 strongSwan 的 signer_t 接口封装。
+
+```c
+// gmalg_signer.c 核心结构
+typedef struct private_gmalg_sm2_signer_t {
+    gmalg_sm2_signer_t public;
+    SM2_KEY sm2_key;           // GmSSL SM2 密钥上下文
+    bool has_private_key;      // 是否有私钥
+} private_gmalg_sm2_signer_t;
+```
+
+**签名流程**：
+1. 使用 SM3 对待签名数据进行哈希
+2. 调用 GmSSL 的 `sm2_sign()` 生成 DER 编码签名
+3. 返回签名数据
+
+**验证流程**：
+1. 使用 SM3 对原始数据进行哈希
+2. 处理 DER 编码长度字段
+3. 调用 `sm2_verify()` 验证签名
+
+**密钥格式支持**：
+- DER 编码私钥信息（PKCS#8 格式）
+- DER 编码公钥信息（X.509 SubjectPublicKeyInfo 格式）
+- 原始私钥（32 字节）
+
+**算法 ID 定义**：
+```c
+#define AUTH_SM2    1050    // SM2 签名算法
+```
+
+### 5.2.4 SM2-KEM 密钥封装实现
+
+**算法概述**：SM2-KEM 是基于 SM2 椭圆曲线的密钥封装机制，采用"双向封装"模式，使双方各贡献一个随机数，最终共享密钥为两者的拼接。
+
+**设计挑战**：strongSwan 的 key_exchange_t 接口是为 Diffie-Hellman 类算法设计的，标准调用流为"双方各自发送公钥→计算共享秘密"。而 SM2 数字信封本质上是"一方使用对方公钥加密随机数"的单向操作。
+
+**解决方案**：本研究采用"双向封装"模式，通过以下方式适配 RFC 9370 框架：
+
+```
+Initiator                           Responder
+    |                                   |
+    |--- 发送 EncCert 公钥 (65 B) ----->|
+    |<-- 返回 EncCert 公钥 (65 B) ------|
+    |                                   |
+    |--- 发送 SM2_Enc(r_i) (141 B) ---->|
+    |<-- 返回 SM2_Enc(r_r) (141 B) -----|
+    |                                   |
+    |     共享密钥 SK = r_i || r_r      |
+```
+
+**核心结构**：
+```c
+// gmalg_ke.c 核心结构
+struct private_key_exchange_t {
+    key_exchange_t public;
+    key_exchange_method_t method;     // KE_SM2 = 1051
+
+    SM2_KEY my_key;                   // 本方密钥对
+    chunk_t my_pubkey;                // 本方公钥导出（65 字节）
+    SM2_KEY peer_enccert;             // 对方 EncCert 公钥
+    chunk_t my_random;                // 本方随机（32 字节）
+    chunk_t peer_random;              // 对方随机（32 字节）
+    chunk_t shared_secret;            // 共享密钥（64 字节）
+    chunk_t my_ciphertext;            // 封装密文（141 字节）
+    bool is_initiator;                // 角色标识
+};
+```
+
+**常量定义**：
+```c
+#define SM2_KEM_PUBLIC_KEY_SIZE     65   // 非压缩公钥
+#define SM2_KEM_RANDOM_SIZE         32   // 随机贡献大小
+#define SM2_KEM_SHARED_SECRET_SIZE  64   // SK = r_i || r_r
+#define SM2_KEM_CIPHERTEXT_SIZE     141  // DER 编码密文
+```
+
+**共享密钥计算**：
+```c
+static bool compute_shared_secret(private_key_exchange_t *this) {
+    this->shared_secret = chunk_alloc(SM2_KEM_SHARED_SECRET_SIZE);
+
+    if (this->is_initiator) {
+        // Initiator: SK = r_i || r_r
+        memcpy(this->shared_secret.ptr, this->my_random.ptr, 32);
+        memcpy(this->shared_secret.ptr + 32, this->peer_random.ptr, 32);
+    } else {
+        // Responder: SK = r_i || r_r
+        memcpy(this->shared_secret.ptr, this->peer_random.ptr, 32);
+        memcpy(this->shared_secret.ptr + 32, this->my_random.ptr, 32);
+    }
+    return TRUE;
+}
+```
+
+**算法 ID 定义**：
+```c
+#define KE_SM2    1051    // SM2-KEM（私有使用范围）
+```
+
+**测试结果**：
+- 共享密钥大小：64 字节
+- 密文大小：约 141 字节（DER 编码）
+- 功能测试：✅ 通过
+
+---
+
+## 5.3 协议层实现
+
+本节介绍基于 RFC 9242（IKE_INTERMEDIATE）和 RFC 9370（多重密钥交换）的协议层实现，包括提案协商、证书分发、密钥派生等核心流程。
+
+### 5.3.1 IKE_SA_INIT 提案协商
+
+**Transform ID 映射**：
+
+| Transform Type | 算法 | Transform ID | 说明 |
+|---------------|------|-------------|------|
+| KE (Type 4) | x25519 | 4 | 经典 ECDH |
+| ADDKE1 (Type 6) | ml-kem-768 | 35 | IANA 官方分配 |
+| ADDKE2 (Type 7) | sm2-kem | 1051 | 私有使用范围 |
+
+**配置语法**：
+```conf
+# swanctl.conf
+connections {
+    pqgm-ikev2 {
+        version = 2
+        # 三重密钥交换提案
+        proposals = aes256-sha384-x25519-ke1_mlkem768-ke2_sm2kem
+
+        children {
+            ipsec {
+                esp_proposals = aes256gcm256-x25519-ke1_mlkem768-ke2_sm2kem
+            }
+        }
+    }
+}
+```
+
+**提案格式**：strongSwan 使用 `keX_` 前缀表示额外密钥交换，其中 X 为 1-7 对应 ADDKE1-ADDKE7。
+
+### 5.3.2 IKE_INTERMEDIATE 证书分发
+
+**双证书机制**：
+
+| 证书类型 | Key Usage | 用途 |
+|---------|-----------|------|
+| SignCert | digitalSignature | IKE_AUTH 签名认证 |
+| EncCert | keyEncipherment | SM2-KEM 密钥封装 |
+
+**证书分发时机**：在 IKE_INTERMEDIATE #0（消息 ID = 1）阶段，双方交换 SignCert 和 EncCert。
+
+**实现方式**：通过修改 `ike_cert_post.c`，在消息 ID 判断为 1 时触发证书分发逻辑。
+
+```c
+// 伪代码示意
+if (message->get_message_id(message) == 1) {
+    // IKE_INTERMEDIATE #0
+    add_cert(cert_payload, sign_cert);
+    add_cert(cert_payload, enc_cert);
+}
+```
+
+**证书格式**：X.509 v3，SM2 签名，约 800-900 字节/张。
+
+### 5.3.3 多重密钥交换执行
+
+**执行顺序**：strongSwan 按照 RFC 9370 规范，自动按 ADDKE1→ADDKE2 顺序执行额外密钥交换。
+
+```
+IKE_SA_INIT 完成
+    → 检测到 ADDKE1 (ml-kem-768) → IKE_INTERMEDIATE #1
+    → 检测到 ADDKE2 (sm2-kem)    → IKE_INTERMEDIATE #2
+```
+
+**密钥派生（RFC 9370）**：
+
+```c
+// 1. 初始密钥材料（IKE_SA_INIT）
+keymat_0 = prf(skeyseed, Ni | Nr | SPIi | SPIr)
+
+// 2. ADDKE1 密钥更新（ML-KEM-768）
+keymat_1 = prf(keymat_0, "additional key material 1" | SK_ml_kem)
+
+// 3. ADDKE2 密钥更新（SM2-KEM）
+keymat_2 = prf(keymat_1, "additional key material 2" | SK_sm2)
+
+// 4. 最终 KEYMAT
+final_keymat = keymat_2
+```
+
+### 5.3.4 IKE_AUTH 认证绑定
+
+**当前实现**：使用 SM2 签名证书进行身份认证，签名字段包含 IntAuth（中间交换绑定）。
+
+**后量子认证扩展**：系统预留了后量子签名（ML-DSA/SLH-DSA）的扩展点，可通过配置切换认证证书类型。
+
+```conf
+# 未来配置示例
+local {
+    auth = pubkey
+    certs = auth_cert.pem    # 后量子认证证书（ML-DSA/SLH-DSA）
+}
+```
+
+---
+
+## 5.4 功能验证测试
+
+### 5.4.1 算法功能测试
+
+**测试程序**：`tests/test_gmalg.c`
+
+**测试用例与结果**：
+
+| 测试项 | 测试内容 | 结果 |
+|--------|---------|------|
+| SM3 哈希 | 哈希值大小、一致性验证 | ✅ 通过 |
+| SM3 PRF | 密钥派生功能 | ✅ 通过 |
+| SM4 ECB | 加密/解密正确性 | ✅ 通过 |
+| SM4 CBC | IV 处理、加密/解密 | ✅ 通过 |
+| SM4 CTR | 计数器模式、流加密 | ✅ 通过 |
+| SM2 签名 | 签名/验签正确性 | ✅ 通过 |
+| SM2-KEM | 双向封装、共享密钥一致性 | ✅ 通过 |
+
+**SM3 测试示例**：
+```
+测试数据: "Hello, SM3!"
+哈希结果: 21b937fed61e685b8ac08c67fe9a3300437f2ca44547dea06e0cfe30219fdc4c
+与 GmSSL 库结果一致: ✅
+```
+
+### 5.4.2 ML-KEM 混合密钥交换测试
+
+**测试环境**：本地回环测试（localhost）
+
+**测试配置**：
+```conf
+proposals = aes256-sha384-x25519-ke1_mlkem768
+```
+
+**测试结果**：
+
+| 配置 | 密钥交换方法 | RTT | 平均时延 | 成功率 |
+|------|-------------|-----|----------|--------|
+| 传统 IKEv2 | x25519 | 2 | 48 ms | 100% |
+| 混合密钥交换 | x25519 + ML-KEM-768 | 3 | 52 ms | 100% |
+
+**结论**：
+- 混合密钥交换增加约 **4 ms**（8.3%）时延
+- ML-KEM-768 密文大小：1184 字节
+- IPsec SA 成功建立
+
+### 5.4.3 5-RTT 协议流程验证
+
+**完整协议流程**：
+
+```
+RTT 1: IKE_SA_INIT
+       协商 KE=x25519, ADDKE1=ml-kem-768, ADDKE2=sm2-kem
+       │
+RTT 2: IKE_INTERMEDIATE #0（消息 ID = 1）
+       交换双证书：SignCert + EncCert
+       │
+RTT 3: IKE_INTERMEDIATE #1（消息 ID = 2）
+       SM2-KEM 密钥交换（约 141 字节密文）
+       │
+RTT 4: IKE_INTERMEDIATE #2（消息 ID = 3）
+       ML-KEM-768 密钥交换（1184 字节密文）
+       │
+RTT 5: IKE_AUTH（消息 ID = 4）
+       SM2 签名认证
+```
+
+**验证状态**：
+
+| 阶段 | 本地回环 | 双机测试 |
+|------|---------|---------|
+| IKE_SA_INIT | ✅ 已验证 | ⏳ 待测试 |
+| IKE_INTERMEDIATE #0 | ✅ 已验证 | ⏳ 待测试 |
+| IKE_INTERMEDIATE #1 | ✅ 已验证 | ⏳ 待测试 |
+| IKE_INTERMEDIATE #2 | ✅ 已验证 | ⏳ 待测试 |
+| IKE_AUTH | ✅ 已验证 | ⏳ 待测试 |
+
+---
+
+## 5.5 性能评估与分析
+
+### 5.5.1 算法层性能对比
+
+**SM3/SM4 与国际标准算法对比**：
+
+| 算法 | 吞吐量 | 对比基准 |
+|------|--------|---------|
+| SM3 Hash | 443 MB/s | SHA-256: ~500 MB/s |
+| SM4 ECB | 189 MB/s | AES-128-ECB: ~200 MB/s |
+| SM4 CBC | 175 MB/s | AES-128-CBC: ~180 MB/s |
+| SM3 PRF | 3.7M ops/s | HMAC-SHA256: ~4M ops/s |
+
+**结论**：国密算法性能与国际标准算法基本相当，差异在 10% 以内，满足实际部署需求。
+
+### 5.5.2 协议通信开销分析
+
+**理论估算（待实测验证）**：
+
+| 交互阶段 | 传统 IKEv2 | PQ-GM-IKEv2 | 差异说明 |
+|:--- | :--- | :--- | :--- |
+| IKE_SA_INIT | ~450 B | ~520 B | 增加额外 Transform ID 提案 |
+| IKE_INTERMEDIATE #0 | N/A | ~2.5 KB | 双证书分发（2×~800B + 开销） |
+| IKE_INTERMEDIATE #1 | N/A | ~300 B | SM2-KEM 密文（141B）+ 开销 |
+| IKE_INTERMEDIATE #2 | N/A | ~2.5 KB | ML-KEM-768（1184B）+ 分片开销 |
+| IKE_AUTH | ~1.2 KB | ~500 B | 证书已前置，仅含签名 |
+| **总计** | ~1.7 KB | ~6.3 KB | 增长约 3.7 倍 |
+
+> **注**：以上数据为理论估算，实际值需通过 Wireshark 抓包测量验证。
+
+**分片机制**：当载荷超过 MTU（默认 1280 字节）时，strongSwan 自动触发 IKEv2 分片（RFC 7383），将大报文切分为多个 IKE_SKF 分片。
+
+### 5.5.3 握手时延分析
+
+**已测数据**：
+
+| 配置 | RTT | 时延 | 增量 |
+|------|-----|------|------|
+| 传统 IKEv2 (x25519) | 2 | 48 ms | - |
+| 混合 (x25519 + ML-KEM-768) | 3 | 52 ms | +4 ms (+8.3%) |
+
+**5-RTT 理论估算（待实测验证）**：
+
+| 场景 | RTT | 理论时延 | 说明 |
+|------|-----|---------|------|
+| 传统 IKEv2 | 2 | 20-50 ms | 仅 ECDH + 签名验证 |
+| PQ-GM-IKEv2 (完整) | 5 | 80-120 ms | 双证书 + SM2-KEM + ML-KEM + SM2 签名 |
+
+> **注**：5-RTT 完整时延需在双机环境下实测获取。
+
+**时延构成分析**：
+
+| 阶段 | 主要开销 | 预估占比 |
+|------|---------|---------|
+| IKE_SA_INIT | x25519 密钥交换 | ~10% |
+| IKE_INTERMEDIATE #0 | 证书解析/验证 | ~15% |
+| IKE_INTERMEDIATE #1 | SM2 加解密 | ~10% |
+| IKE_INTERMEDIATE #2 | ML-KEM 封装/解封 | ~35% |
+| IKE_AUTH | SM2 签名/验签 | ~20% |
+| 网络 RTT | 5 个往返 | ~10% |
+
+### 5.5.4 本章小结
+
+本章详细阐述了 PQ-GM-IKEv2 协议原型系统的工程实现。主要工作包括：
+
+1. **国密算法插件开发**：实现了 SM3 哈希/PRF、SM4 ECB/CBC/CTR、SM2 签名、SM2-KEM 密钥封装，性能与国际标准算法相当。
+
+2. **协议层集成**：基于 strongSwan 6.0.4 的 RFC 9242/9370 框架，实现了 5-RTT 混合密钥交换流程，包括双证书分发、多重密钥交换、密钥派生链。
+
+3. **功能验证**：本地回环测试验证了所有算法模块和协议流程的正确性；ML-KEM 混合密钥交换增加约 8.3% 时延，在可接受范围内。
+
+4. **性能评估**：算法层性能测试完成，协议层通信开销和时延分析基于理论估算，完整数据需待双机测试验证。
+
+**下一步工作**：
+- 完成双机环境部署与端到端测试
+- 获取真实的通信开销和握手时延数据
+- 验证分片机制在复杂网络环境下的表现
+
+---
+
+## 附录：算法 ID 汇总表
+
+| 算法类型 | 算法名称 | Transform ID | IANA 状态 |
+|---------|---------|-------------|----------|
+| Hash | SM3 | 1032 | 私有使用 |
+| PRF | SM3-PRF | 1052 | 私有使用 |
+| Encryption | SM4-ECB | 1040 | 私有使用 |
+| Encryption | SM4-CBC | 1041 | 私有使用 |
+| Encryption | SM4-CTR | 1042 | 私有使用 |
+| Signature | SM2 | 1050 | 私有使用 |
+| Key Exchange | SM2-KEM | 1051 | 私有使用 |
+| Key Exchange | ml-kem-768 | 35 | IANA 官方 |
+| Key Exchange | x25519 | 4 | IANA 官方 |
+
+---
+
+## 参考文献
+
+[1] RFC 7296: Internet Key Exchange Protocol Version 2 (IKEv2)
+[2] RFC 9242: Intermediate Exchange in IKEv2
+[3] RFC 9370: Multiple Key Exchanges in IKEv2
+[4] FIPS 203: Module-Lattice-Based Key-Encapsulation Mechanism Standard (ML-KEM)
+[5] GM/T 0002-2012: SM4 分组密码算法
+[6] GM/T 0003-2012: SM2 椭圆曲线公钥密码算法
+[7] GM/T 0004-2012: SM3 密码杂凑算法
+[8] strongSwan 6.0 Documentation: https://docs.strongswan.org/
+[9] GmSSL 项目: https://github.com/guanzhi/GmSSL
