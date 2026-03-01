@@ -6,6 +6,7 @@
 
 **更新记录**：
 - 2026-03-01: P0（公钥提取机制）已修复 ✅
+- 2026-03-01: P0.1（双向证书交换）已修复 ✅
 
 ---
 
@@ -146,6 +147,69 @@ if (x509_cert_check(cert, len, X509_cert_server_key_encipher, &path_len) == 1) {
 2. `/home/ipsec/strongswan/src/libcharon/sa/ikev2/tasks/ike_init.c`
    - `process_i_multi_ke()`: 修复 OID 检查值
    - 添加详细的调试日志
+
+---
+
+## P0.1 修复记录：双向证书交换 ✅
+
+### 问题描述
+
+在 IKE_INTERMEDIATE #0 证书交换阶段，发起方给响应方的报文只有 126 字节，没有发送证书。
+
+### 根本原因
+
+`should_send_intermediate_certs()` 函数对 `CERT_SEND_IF_ASKED` 策略检查是否收到了 CERTREQ 或证书。但发起方是**第一个发送消息的**，当然什么都没收到，所以返回 FALSE，导致发起方不发送证书。
+
+**死锁场景**：
+```
+发起方: 等待收到证书才发送 → 什么都不发
+响应方: 等待收到证书才回复 → 什么都不发
+结果: 双方都不发送证书
+```
+
+### 修复
+
+在 `build_i()` 方法中，对于 IKE_INTERMEDIATE #0 (message_id == 1)，发起方**无条件**发送证书：
+
+```c
+METHOD(task_t, build_i, status_t,
+	private_ike_cert_post_t *this, message_t *message)
+{
+	switch (message->get_exchange_type(message))
+	{
+		case IKE_INTERMEDIATE:
+			/* PQ-GM-IKEv2: Initiator MUST send certificates unconditionally in IKE_INTERMEDIATE #0
+			 * regardless of cert policy. This is because:
+			 * 1. Initiator is the first to send in the exchange
+			 * 2. Responder will only reply with certs after receiving initiator's certs
+			 * 3. If initiator waits for certs (CERT_SEND_IF_ASKED), we get a deadlock
+			 */
+			if (message->get_message_id(message) == 1 && !this->intermediate_certs_sent)
+			{
+				DBG1(DBG_IKE, "PQ-GM-IKEv2: build_i - initiator sending certificates "
+					 "unconditionally in IKE_INTERMEDIATE #0");
+				build_intermediate_certs(this, message);
+			}
+			break;
+	}
+	return NEED_MORE;
+}
+```
+
+### 验证结果
+
+| 指标 | 修复前 | 修复后 |
+|------|--------|--------|
+| 发起方 IKE_INTERMEDIATE #0 报文大小 | 126 字节 | **1232 字节** |
+| 发起方发送证书 | ❌ 不发送 | ✅ SignCert + EncCert |
+| 响应方回复证书 | ❌ 无 | ✅ SignCert + EncCert |
+| SM2-KEM 公钥来源 | 文件 fallback | **EncCert 提取** |
+| IKE_SA 建立 | ❌ AUTH_FAILED | ✅ **成功** |
+
+### 修复的文件
+
+1. `/home/ipsec/strongswan/src/libcharon/sa/ikev2/tasks/ike_cert_post.c`
+   - `build_i()`: 发起方在 IKE_INTERMEDIATE #0 无条件发送证书
 
 ---
 
