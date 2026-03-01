@@ -169,6 +169,35 @@ typedef struct {
 
 ---
 
+### 2026-03-02: ML-DSA-65 Signer Plugin Implementation
+
+**功能**: 为 strongSwan 添加 ML-DSA-65 后量子签名支持
+
+**实现**:
+- 创建独立 mldsa 插件，参考 gmalg 模式
+- 使用 liboqs 进行 ML-DSA-65 签名/验证
+- 算法 ID: AUTH_MLDSA_65 = 1053 (私有使用范围)
+
+**文件**:
+- strongswan/src/libstrongswan/plugins/mldsa/
+  - mldsa_plugin.c/h: 插件注册
+  - mldsa_signer.c/h: ML-DSA-65 签名器实现
+
+**验证结果**:
+- ✅ liboqs 0.12.0 安装完成
+- ✅ 插件编译成功
+- ✅ 插件加载成功
+- ✅ 单元测试通过 (ML-DSA-65 sign/verify)
+- ⏳ IKE_AUTH 集成测试 (需要 OpenSSL 3.5+ 支持 ML-DSA 证书)
+
+**已知限制**:
+- OpenSSL 3.0.2 不支持 ML-DSA 证书生成
+- 需要 OpenSSL 3.5+ 或 oqs-provider 才能进行完整测试
+
+**详细记录**: [MLDSA-IKE-AUTH-TEST-STATUS.md](MLDSA-IKE-AUTH-TEST-STATUS.md)
+
+---
+
 ## 关键代码位置
 
 | 功能 | 文件 |

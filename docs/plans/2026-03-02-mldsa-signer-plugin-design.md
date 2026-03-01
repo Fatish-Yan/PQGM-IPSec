@@ -367,4 +367,28 @@ AM_CONDITIONAL(USE_MLDSA, [test x$mldsa = xtrue])
 
 ---
 
+## Implementation Status
+
+**Date**: 2026-03-02
+
+**Phase 1: Plugin Skeleton** ✅ Complete
+- mldsa_plugin.c/h created
+- mldsa_signer.c/h created
+- Makefile.am created
+
+**Phase 2: Build and Test** ✅ Complete
+- Plugin integrated into build system
+- Plugin compiles successfully
+- Unit tests pass
+
+**Phase 3: Integration** ✅ Complete
+- Plugin loads successfully in strongSwan
+- AUTH_MLDSA_65 (1053) registered
+
+**Phase 4: End-to-End Testing** ⏳ Deferred
+- Pending OpenSSL 3.5+ upgrade for ML-DSA certificate support
+- See [MLDSA-IKE-AUTH-TEST-STATUS.md](../../MLDSA-IKE-AUTH-TEST-STATUS.md)
+
+---
+
 *设计批准日期: 2026-03-02*

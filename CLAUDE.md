@@ -40,6 +40,15 @@ make -j$(nproc)
 sudo make install
 ```
 
+### Build strongSwan with ML-DSA plugin
+```bash
+cd strongswan
+./autogen.sh
+./configure --enable-mldsa --enable-gmalg --enable-swanctl --with-gmssl=/usr/local
+make -j$(nproc)
+sudo make install
+```
+
 ### Run tests
 ```bash
 cd /home/ipsec/PQGM-IPSec
@@ -53,6 +62,7 @@ LD_LIBRARY_PATH=/usr/local/lib:/home/ipsec/strongswan/src/libstrongswan/.libs \
 ```
 strongSwan 源码:    /home/ipsec/strongswan
 gmalg 插件:         /home/ipsec/strongswan/src/libstrongswan/plugins/gmalg
+mldsa 插件:         /home/ipsec/strongswan/src/libstrongswan/plugins/mldsa
 项目文档:           /home/ipsec/PQGM-IPSec
 参考文档:           /home/ipsec/PQGM-IPSec/参考文档/
 GmSSL 安装:         /usr/local/lib
@@ -85,6 +95,7 @@ gmalg/
 #define AUTH_SM2        1050    // SM2 Signature
 #define KE_SM2          1051    // SM2-KEM
 #define PRF_SM3         1052    // SM3 PRF
+#define AUTH_MLDSA_65   1053    // ML-DSA-65 Signature
 ```
 
 ### Plugin Registration Pattern
@@ -176,6 +187,7 @@ endif
 | SM2-KEM | ✅ Done | Simplified (temp key pairs), 140 bytes ciphertext |
 | IKE_INTERMEDIATE | ✅ Verified | ML-KEM tested (3 RTT, +4ms) |
 | ML-KEM integration | ✅ Verified | Working with strongSwan 6.0 ml plugin |
+| ML-DSA-65 Signer | ✅ Done | liboqs plugin, AUTH_MLDSA_65 = 1053 |
 
 ## References
 
