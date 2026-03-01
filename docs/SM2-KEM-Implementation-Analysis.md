@@ -493,7 +493,7 @@ if (load_sm2_pubkey_from_file(SM2_PEER_PUBKEY_FILE, &sm2_peer_key) == 1)
 | **P0** | 公钥提取机制 | 安全性 + 功能正确性 | 中 | ✅ **已修复** |
 | **P0.1** | 双向证书交换 | 功能正确性 | 低 | ✅ **已修复** |
 | **P1** | SM2-KEM 性能优化 | 用户体验 | 低 | 待处理 |
-| **P2** | IntAuth 绑定 | 安全性 | 高 | 待处理 |
+| **P2** | IntAuth 绑定 | 安全性 | 高 | ✅ **已验证** |
 | **P3** | 后量子签名认证 | 完整性 | 高 | 待处理 |
 | **P4** | RFC 9370 密钥更新链验证 | 正确性验证 | 中 | ✅ **已验证** |
 | **P5** | CERTREQ 规范化 | 规范符合性 | 中 | 待处理（低优先级） |
@@ -511,9 +511,10 @@ if (load_sm2_pubkey_from_file(SM2_PEER_PUBKEY_FILE, &sm2_peer_key) == 1)
 2. **性能优化**：移除调试输出
    - 将 `fprintf(stderr, ...)` 改为 `DBG1()`
 
-3. **后续实现**：IntAuth 绑定
-   - 研究 RFC 9242 的 IntAuth 机制
-   - 修改 AUTH 计算包含 intermediate 内容
+3. ~~**后续实现**：IntAuth 绑定~~ ✅ **已验证 (2026-03-01)**
+   - ✅ strongSwan 已完整实现 RFC 9242 IntAuth 机制
+   - ✅ 所有 IKE_INTERMEDIATE 消息内容被正确绑定到 AUTH
+   - ✅ 验证结果文档: `docs/rfc9242-intauth-verification-results.md`
 
 4. ~~**验证工作**：RFC 9370 密钥更新链~~ ✅ **已完成 (2026-03-01)**
    - ✅ 验证 SM2-KEM 共享密钥参与密钥派生 (64 bytes)
@@ -523,5 +524,5 @@ if (load_sm2_pubkey_from_file(SM2_PEER_PUBKEY_FILE, &sm2_peer_key) == 1)
 ---
 
 *文档创建时间: 2026-03-01*
-*最后更新: 2026-03-01 - P0, P4 已完成*
+*最后更新: 2026-03-01 - P0, P2, P4 已完成*
 *作者: Claude Code AI Assistant*
