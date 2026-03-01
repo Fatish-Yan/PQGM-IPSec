@@ -495,7 +495,7 @@ if (load_sm2_pubkey_from_file(SM2_PEER_PUBKEY_FILE, &sm2_peer_key) == 1)
 | **P1** | SM2-KEM 性能优化 | 用户体验 | 低 | 待处理 |
 | **P2** | IntAuth 绑定 | 安全性 | 高 | 待处理 |
 | **P3** | 后量子签名认证 | 完整性 | 高 | 待处理 |
-| **P4** | RFC 9370 密钥更新链验证 | 正确性验证 | 中 | 待处理 |
+| **P4** | RFC 9370 密钥更新链验证 | 正确性验证 | 中 | ✅ **已验证** |
 | **P5** | CERTREQ 规范化 | 规范符合性 | 中 | 待处理（低优先级） |
 
 ---
@@ -515,12 +515,13 @@ if (load_sm2_pubkey_from_file(SM2_PEER_PUBKEY_FILE, &sm2_peer_key) == 1)
    - 研究 RFC 9242 的 IntAuth 机制
    - 修改 AUTH 计算包含 intermediate 内容
 
-4. **验证工作**：RFC 9370 密钥更新链
-   - 验证 SM2-KEM 共享密钥是否参与密钥派生
-   - 验证 ML-KEM 是否使用更新后的密钥材料
+4. ~~**验证工作**：RFC 9370 密钥更新链~~ ✅ **已完成 (2026-03-01)**
+   - ✅ 验证 SM2-KEM 共享密钥参与密钥派生 (64 bytes)
+   - ✅ 验证 ML-KEM 使用更新后的密钥材料
+   - ✅ 验证结果文档: `docs/rfc9370-verification-results.md`
 
 ---
 
 *文档创建时间: 2026-03-01*
-*最后更新: 2026-03-01 - P0 已修复*
+*最后更新: 2026-03-01 - P0, P4 已完成*
 *作者: Claude Code AI Assistant*
