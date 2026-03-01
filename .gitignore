@@ -102,3 +102,4 @@ node_modules/
 tests/initiator/*Key.pem
 tests/responder/*Key.pem
 tests/*Key.pem
+docker/_archive_*/
