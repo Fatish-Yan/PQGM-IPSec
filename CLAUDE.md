@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PQ-GM-IKEv2**: 抗量子与国密融合的 IKEv2/IPSec 协议设计与实现 (硕士毕业设计)
 
+## 重要！！必须要记住的
+### PQGM-IKEv2设计的完整5RTT流程，以及密钥更迭方式参考：`/home/ipsec/PQGM-IPSec/docs/参考文档/完整的5RTT的PQGM-IKEv2报文流程.md`
+- 
+
 核心创新：
 - **混合密钥交换**: 经典 DH + 后量子 KEM (ML-KEM) + 国密 SM2-KEM
 - **双证书机制**: SM2 签名证书/加密证书分离 + 后量子认证证书
@@ -213,3 +217,16 @@ IKE_AUTH: 后量子签名认证 (ML-DSA/SLH-DSA)
 ### 解决方案
 使用预定义 ID - 在配置中指定对端 ID
 
+---
+
+## ⚠️ 重要提醒
+
+**遇到问题先查文档！避免因上下文压缩导致重复犯错！**
+
+- **修复记录**: `/home/ipsec/PQGM-IPSec/docs/FIXES-RECORD.md`
+- **BUG记录**: `/home/ipsec/PQGM-IPSec/docs/BUG-RECORD.md`
+
+***解决完bug及时记录
+
+**测试前先看看测试文档，确保环境无误，测试完后及时更新文档，确保测试环境正确
+- **测试环境**: `/home/ipsec/PQGM-IPSec/docs/TEST-ENVIRONMENT.md`
