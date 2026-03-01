@@ -6,6 +6,48 @@
 
 ## 修复历史
 
+### 2026-03-02: IKE_AUTH ECDSA 证书认证 + IntAuth 绑定验证
+
+**问题**: 在证书认证模式下，SM2-KEM 私钥加载失败
+
+**症状**:
+```
+SM2-KEM: failed to parse SM2 private key from DER
+no trusted ECDSA public key found for 'initiator.pqgm.test'
+```
+
+**根因**:
+1. SM2-KEM 尝试从 credential manager 获取私钥，但找到的是 ECDSA P-256 私钥（用于 IKE_AUTH）
+2. ECDSA 私钥无法被解析为 SM2 格式
+3. 证书缺少 SAN (Subject Alternative Name) 导致验证失败
+
+**修复**:
+
+1. **gmalg_ke.c**: 添加 ECDSA 格式解析失败时的文件 fallback
+```c
+/* Priority 3 解析失败时，尝试文件 fallback */
+if (sm2_private_key_info_from_der(&sm2_my_key, ...) != 1)
+{
+    DBG1(DBG_IKE, "SM2-KEM: ECDSA key is not SM2 format, trying file fallback");
+    goto try_file_fallback;
+}
+```
+
+2. **证书生成**: 添加 SAN 扩展
+```bash
+# 添加 SAN 扩展
+openssl x509 -req ... -extfile san.cnf -extensions v3_req
+```
+
+**验证结果**:
+- ✅ IKE_AUTH ECDSA 证书认证成功
+- ✅ IntAuth 绑定验证通过
+- ✅ 5-RTT PQ-GM-IKEv2 完整流程验证通过
+
+**详细记录**: [ike-auth-cert-verification-results.md](ike-auth-cert-verification-results.md)
+
+---
+
 ### 2026-03-02: SM2 EncCert OID检查条件修复 (再次!)
 
 **问题**: `ike_cert_post.c` 中检查 SM2 密钥的OID条件错误

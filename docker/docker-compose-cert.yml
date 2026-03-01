@@ -1,0 +1,78 @@
+# PQ-GM-IKEv2 证书认证测试配置
+# 用于验证 IKE_AUTH 阶段的 ECDSA 证书认证 + IntAuth 绑定
+#
+# 使用方法:
+#   cd /home/ipsec/PQGM-IPSec/docker
+#   docker-compose -f docker-compose-cert.yml up -d
+#
+# 注意：
+# - ECDSA authCert 已部署到标准目录（与 SM2 双证书共存）
+# - SM2 双证书：signCert.pem, encCert.pem (IKE_INTERMEDIATE)
+# - ECDSA authCert：auth_ecdsa_cert.pem (IKE_AUTH)
+
+version: '3.8'
+services:
+  initiator:
+    image: ubuntu:22.04
+    container_name: pqgm-initiator-cert
+    hostname: initiator.pqgm.test
+    networks:
+      pqgm_net:
+        ipv4_address: 172.28.0.10
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    tmpfs:
+      - /var/run:exec
+      - /tmp
+    volumes:
+      - /usr/local:/usr/local:ro
+      # 证书目录（包含 SM2 双证书 + ECDSA authCert）
+      - ./initiator/certs/x509:/usr/local/etc/swanctl/x509:ro
+      - ./initiator/certs/x509ca:/usr/local/etc/swanctl/x509ca:ro
+      - ./initiator/certs/private:/usr/local/etc/swanctl/private:ro
+      - ./initiator/certs/pubkey:/usr/local/etc/swanctl/pubkey:ro
+      # 使用证书认证的配置文件
+      - ./initiator/config/swanctl-cert.conf:/usr/local/etc/swanctl/swanctl.conf:ro
+      - ./initiator/config/strongswan.conf:/usr/local/etc/strongswan.conf:ro
+      - /lib:/lib:ro
+      - /lib64:/lib64:ro
+      - /usr/lib:/usr/lib:ro
+    command: /bin/bash -c "ldconfig && exec /usr/local/libexec/ipsec/charon"
+
+  responder:
+    image: ubuntu:22.04
+    container_name: pqgm-responder-cert
+    hostname: responder.pqgm.test
+    networks:
+      pqgm_net:
+        ipv4_address: 172.28.0.20
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    tmpfs:
+      - /var/run:exec
+      - /tmp
+    volumes:
+      - /usr/local:/usr/local:ro
+      # 证书目录（包含 SM2 双证书 + ECDSA authCert）
+      - ./responder/certs/x509:/usr/local/etc/swanctl/x509:ro
+      - ./responder/certs/x509ca:/usr/local/etc/swanctl/x509ca:ro
+      - ./responder/certs/private:/usr/local/etc/swanctl/private:ro
+      - ./responder/certs/pubkey:/usr/local/etc/swanctl/pubkey:ro
+      # 使用证书认证的配置文件
+      - ./responder/config/swanctl-cert.conf:/usr/local/etc/swanctl/swanctl.conf:ro
+      - ./responder/config/strongswan.conf:/usr/local/etc/strongswan.conf:ro
+      - /lib:/lib:ro
+      - /lib64:/lib64:ro
+      - /usr/lib:/usr/lib:ro
+    command: /bin/bash -c "ldconfig && exec /usr/local/libexec/ipsec/charon"
+
+networks:
+  pqgm_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/24
