@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   initiator:
     image: ubuntu:22.04
@@ -12,14 +11,21 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
+    tmpfs:
+      - /var/run:exec
+      - /tmp
     volumes:
-      - /usr/local:/usr/local:rw
-      - ./initiator/config:/config:ro
-      - ./initiator/certs:/certs:ro
+      - /usr/local:/usr/local:ro
+      - ./initiator/certs/x509:/usr/local/etc/swanctl/x509:ro
+      - ./initiator/certs/x509ca:/usr/local/etc/swanctl/x509ca:ro
+      - ./initiator/certs/private:/usr/local/etc/swanctl/private:ro
+      - ./initiator/certs/pubkey:/usr/local/etc/swanctl/pubkey:ro
+      - ./initiator/config/swanctl.conf:/usr/local/etc/swanctl/swanctl.conf:ro
+      - ./initiator/config/strongswan.conf:/usr/local/etc/strongswan.conf:ro
       - /lib:/lib:ro
       - /lib64:/lib64:ro
       - /usr/lib:/usr/lib:ro
-    command: /bin/bash -c "mkdir -p /usr/local/etc/swanctl/x509 /usr/local/etc/swanctl/x509ca /usr/local/etc/swanctl/private && cp /config/* /usr/local/etc/ -r && cp /certs/* /usr/local/etc/swanctl/x509/ -r && cp /certs/encKey.pem /usr/local/etc/swanctl/private/ && cp /certs/signKey.pem /usr/local/etc/swanctl/private/ && cp /certs/caCert.pem /usr/local/etc/swanctl/x509ca/ && sleep infinity"
+    command: /bin/bash -c "ldconfig && exec /usr/local/libexec/ipsec/charon"
 
   responder:
     image: ubuntu:22.04
@@ -32,14 +38,21 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
+    tmpfs:
+      - /var/run:exec
+      - /tmp
     volumes:
-      - /usr/local:/usr/local:rw
-      - ./responder/config:/config:ro
-      - ./responder/certs:/certs:ro
+      - /usr/local:/usr/local:ro
+      - ./responder/certs/x509:/usr/local/etc/swanctl/x509:ro
+      - ./responder/certs/x509ca:/usr/local/etc/swanctl/x509ca:ro
+      - ./responder/certs/private:/usr/local/etc/swanctl/private:ro
+      - ./responder/certs/pubkey:/usr/local/etc/swanctl/pubkey:ro
+      - ./responder/config/swanctl.conf:/usr/local/etc/swanctl/swanctl.conf:ro
+      - ./responder/config/strongswan.conf:/usr/local/etc/strongswan.conf:ro
       - /lib:/lib:ro
       - /lib64:/lib64:ro
       - /usr/lib:/usr/lib:ro
-    command: /bin/bash -c "mkdir -p /usr/local/etc/swanctl/x509 /usr/local/etc/swanctl/x509ca /usr/local/etc/swanctl/private && cp /config/* /usr/local/etc/ -r && cp /certs/* /usr/local/etc/swanctl/x509/ -r && cp /certs/encKey.pem /usr/local/etc/swanctl/private/ && cp /certs/signKey.pem /usr/local/etc/swanctl/private/ && cp /certs/caCert.pem /usr/local/etc/swanctl/x509ca/ && sleep infinity"
+    command: /bin/bash -c "ldconfig && exec /usr/local/libexec/ipsec/charon"
 
 networks:
   pqgm_net:

@@ -1,0 +1,60 @@
+initiate failed: establishing CHILD_SA 'ipsec' failed
+[IKE] initiating IKE_SA pqgm-ikev2[1] to 172.28.0.20
+[ENC] generating IKE_SA_INIT request 0 [ SA KE No N(NATD_S_IP) N(NATD_D_IP) N(FRAG_SUP) N(HASH_ALG) N(REDIR_SUP) N(IKE_INT_SUP) ]
+[NET] sending packet: from 172.28.0.10[500] to 172.28.0.20[500] (264 bytes)
+[NET] received packet: from 172.28.0.20[500] to 172.28.0.10[500] (297 bytes)
+[ENC] parsed IKE_SA_INIT response 0 [ SA KE No N(NATD_S_IP) N(NATD_D_IP) CERTREQ N(FRAG_SUP) N(HASH_ALG) N(CHDLESS_SUP) N(IKE_INT_SUP) N(MULT_AUTH) ]
+[CFG] selected proposal: IKE:AES_CBC_256/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/CURVE_25519/KE1_(1051)/KE2_ML_KEM_768
+[IKE] received cert request for "C=CN, O=PQGM-Test, CN=PQGM-Root-CA"
+[IKE] PQ-GM-IKEv2: IKE_INTERMEDIATE #0 - certificates only, skipping KE
+[IKE] PQ-GM-IKEv2: will send certificates in IKE_INTERMEDIATE #0 (mid=1)
+[IKE] PQ-GM-IKEv2: building certificates for IKE_INTERMEDIATE exchange
+[IKE] no subject certificate found for IKE_INTERMEDIATE
+[IKE] PQ-GM-IKEv2: loading SM2 certificates from files
+[IKE] PQ-GM-IKEv2: sending SignCert certificate from /usr/local/etc/swanctl/x509/signCert.pem (382 bytes DER)
+[IKE] PQ-GM-IKEv2: sending EncCert certificate from /usr/local/etc/swanctl/x509/encCert.pem (392 bytes DER)
+[ENC] payload CERTIFICATE has no ordering rule in IKE_INTERMEDIATE request
+[ENC] payload CERTIFICATE has no ordering rule in IKE_INTERMEDIATE request
+[ENC] generating IKE_INTERMEDIATE request 1 [ CERT CERT ]
+[NET] sending packet: from 172.28.0.10[4500] to 172.28.0.20[4500] (864 bytes)
+[NET] received packet: from 172.28.0.20[4500] to 172.28.0.10[4500] (80 bytes)
+[ENC] parsed IKE_INTERMEDIATE response 1 [ ]
+[IKE] PQ-GM-IKEv2: IKE_INTERMEDIATE #1 - no KE payload in response, certificates only
+[IKE] SM2-KEM: gmalg plugin functions found
+[IKE] SM2-KEM: injecting IDs - peer=%any, my=%any
+[IKE] PQ-GM-IKEv2: IKE_INTERMEDIATE #1 - sending KE (1051)
+[IKE] SM2-KEM: get_public_key called
+[IKE] SM2-KEM: generated my_random
+[IKE] SM2-KEM: EncCert not found in credmgr, trying file fallback
+[IKE] SM2-KEM: load_sm2_pubkey_from_file: sm2_public_key_info_from_pem returned 1
+[IKE] SM2-KEM: loaded peer pubkey from file /usr/local/etc/swanctl/x509/peer_sm2_pubkey.pem
+[IKE] SM2-KEM: returning ciphertext of 141 bytes
+[IKE] PQ-GM-IKEv2: intermediate_certs_sent=TRUE, skipping
+[ENC] generating IKE_INTERMEDIATE request 2 [ KE ]
+[NET] sending packet: from 172.28.0.10[4500] to 172.28.0.20[4500] (224 bytes)
+[NET] received packet: from 172.28.0.20[4500] to 172.28.0.10[4500] (224 bytes)
+[ENC] parsed IKE_INTERMEDIATE response 2 [ KE ]
+[IKE] SM2-KEM: set_public_key called with 140 bytes
+[IKE] SM2-KEM: SM2 private key not found in credmgr, trying file fallback
+[IKE] SM2-KEM: load_sm2_privkey_from_file: decrypt returned 1
+[IKE] SM2-KEM: loaded private key from file /usr/local/etc/swanctl/private/sm2_enc_key.pem
+[IKE] SM2-KEM: decrypted peer_random
+[IKE] PQ-GM-IKEv2: IKE_INTERMEDIATE #2 - sending KE ML_KEM_768
+[IKE] PQ-GM-IKEv2: intermediate_certs_sent=TRUE, skipping
+[ENC] generating IKE_INTERMEDIATE request 3 [ KE ]
+[ENC] splitting IKE message (1264 bytes) into 2 fragments
+[ENC] generating IKE_INTERMEDIATE request 3 [ EF(1/2) ]
+[ENC] generating IKE_INTERMEDIATE request 3 [ EF(2/2) ]
+[NET] sending packet: from 172.28.0.10[4500] to 172.28.0.20[4500] (1236 bytes)
+[NET] sending packet: from 172.28.0.10[4500] to 172.28.0.20[4500] (100 bytes)
+[NET] received packet: from 172.28.0.20[4500] to 172.28.0.10[4500] (1168 bytes)
+[ENC] parsed IKE_INTERMEDIATE response 3 [ KE ]
+[IKE] sending cert request for "C=CN, O=PQGM-Test, CN=PQGM-Root-CA"
+[IKE] authentication of 'initiator-sign.pqgm.test' (myself) with ED25519 successful
+[IKE] sending end entity cert "C=CN, O=PQGM-Test, CN=initiator-sign.pqgm.test"
+[IKE] establishing CHILD_SA ipsec{1}
+[ENC] generating IKE_AUTH request 4 [ IDi CERT N(INIT_CONTACT) CERTREQ IDr AUTH SA TSi TSr N(MOBIKE_SUP) N(NO_ADD_ADDR) N(MULT_AUTH) N(EAP_ONLY) N(MSG_ID_SYN_SUP) ]
+[NET] sending packet: from 172.28.0.10[4500] to 172.28.0.20[4500] (752 bytes)
+[NET] received packet: from 172.28.0.20[4500] to 172.28.0.10[4500] (80 bytes)
+[ENC] parsed IKE_AUTH response 4 [ N(AUTH_FAILED) ]
+[IKE] received AUTHENTICATION_FAILED notify error
