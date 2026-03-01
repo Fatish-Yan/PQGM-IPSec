@@ -141,6 +141,34 @@ typedef struct {
 
 ---
 
+### 2026-03-02: Task 11 ML-DSA证书生成
+
+**问题**: 系统OpenSSL 3.0.2不支持ML-DSA证书生成
+
+**当前状态**:
+- OpenSSL 3.0.2 (需要3.5+才能支持ML-DSA)
+- liboqs 0.12.0已安装
+
+**解决方案**:
+1. 创建`scripts/generate_mldsa_certs.sh` - 用于OpenSSL 3.5+环境
+2. 创建`scripts/generate_mldsa_raw_keys.c` - 使用liboqs生成原始密钥对(当前系统可用)
+
+**生成的ML-DSA-65密钥**:
+- Initiator: `/home/ipsec/PQGM-IPSec/docker/initiator/certs/mldsa/`
+- Responder: `/home/ipsec/PQGM-IPSec/docker/responder/certs/mldsa/`
+- 公钥大小: 1952字节
+- 私钥大小: 4032字节
+- 签名大小: 3309字节
+
+**已知限制**:
+- 当前系统无法生成X.509格式的ML-DSA证书
+- 需要升级到OpenSSL 3.5+并安装oqs-provider才能生成证书
+- 原始密钥对可用于ML-DSA签名功能测试
+
+**详细记录**: [MLDSA_CERTS_README.md](../scripts/MLDSA_CERTS_README.md)
+
+---
+
 ## 关键代码位置
 
 | 功能 | 文件 |
@@ -150,3 +178,5 @@ typedef struct {
 | IKE_INTERMEDIATE处理 | `ike_init.c` |
 | IntAuth计算 | `keymat_v2.c` |
 | RFC 9370密钥派生 | `keymat_v2.c` |
+| ML-DSA签名器 | `mldsa_signer.c/h` |
+| ML-DSA证书生成 | `scripts/generate_mldsa_*.c` |
