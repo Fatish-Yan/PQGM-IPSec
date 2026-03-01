@@ -103,3 +103,4 @@ tests/initiator/*Key.pem
 tests/responder/*Key.pem
 tests/*Key.pem
 docker/_archive_*/
+test_mldsa_signer
