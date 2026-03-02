@@ -212,6 +212,85 @@ typedef struct {
 
 ---
 
+### 2026-03-02: ML-DSA Private Key Loader 修复
+
+**问题**: `mldsa_private_key.c` 编译错误，无法正确实现 `private_key_t` 接口
+
+**错误列表**:
+1. `private_key_t` 没有 `get_refcount` 成员 - 应该使用 `get_ref`
+2. 缺少 `get_keysize` 方法
+3. 缺少 `get_public_key` 方法
+4. 缺少 `has_fingerprint` 方法
+5. `chunk_read_file` 隐式声明 - 应该使用 `chunk_map/chunk_unmap`
+6. `hasher->allocate_hash` 返回值未使用
+
+**修复内容**:
+
+1. **添加正确的 private_key_t 方法实现**:
+```c
+METHOD(private_key_t, get_keysize, int, ...)
+METHOD(private_key_t, get_public_key, public_key_t*, ...)
+METHOD(private_key_t, has_fingerprint, bool, ...)
+METHOD(private_key_t, get_ref, private_key_t*, ...)
+// 移除 get_refcount
+```
+
+2. **使用 chunk_map 替代 chunk_read_file**:
+```c
+// 替代: chunk_read_file(file, &data)
+mapped = chunk_map(file, FALSE);
+if (mapped)
+{
+    key = mldsa_private_key_create(*mapped);
+    chunk_unmap(mapped);
+}
+```
+
+3. **修复 hasher->allocate_hash 返回值检查**:
+```c
+if (!hasher->allocate_hash(hasher, pub, fp))
+{
+    hasher->destroy(hasher);
+    return FALSE;
+}
+```
+
+4. **添加 refcount 成员**:
+```c
+struct private_mldsa_private_key_t {
+    ...
+    refcount_t ref;
+    ...
+};
+```
+
+**同时更新了核心类型定义**:
+
+在 `/home/ipsec/strongswan/src/libstrongswan/credentials/keys/public_key.h`:
+- 添加 `KEY_MLDSA65 = 1053` 到 `key_type_t` 枚举
+- 添加 `SIGN_MLDSA65` 到 `signature_scheme_t` 枚举
+
+在 `/home/ipsec/strongswan/src/libstrongswan/crypto/hashers/hasher.c`:
+- 添加 `SIGN_MLDSA65` 到 `hasher_from_signature_scheme()` switch
+
+在 `/home/ipsec/strongswan/src/libstrongswan/credentials/keys/public_key.c`:
+- 添加 `SIGN_MLDSA65` 到 `signature_scheme_to_oid()` switch
+- 添加 `SIGN_MLDSA65` 到 `key_type_from_signature_scheme()` switch
+
+**修复文件**:
+- `/home/ipsec/strongswan/src/libstrongswan/plugins/mldsa/mldsa_private_key.c`
+- `/home/ipsec/strongswan/src/libstrongswan/plugins/mldsa/mldsa_plugin.c`
+- `/home/ipsec/strongswan/src/libstrongswan/credentials/keys/public_key.h`
+- `/home/ipsec/strongswan/src/libstrongswan/credentials/keys/public_key.c`
+- `/home/ipsec/strongswan/src/libstrongswan/crypto/hashers/hasher.c`
+
+**验证结果**:
+- ✅ 编译成功
+- ✅ 安装成功
+- ✅ mldsa 插件正确加载
+
+---
+
 ### 2026-03-02: ML-DSA 混合证书方案实现
 
 **问题**: OpenSSL 3.0.2 不支持 ML-DSA 证书生成，无法生成标准的 ML-DSA X.509 证书
