@@ -374,6 +374,25 @@ DER: 06 0A 2B 06 01 04 01 86 8D 1F 01 02
 
 **Git 提交**: `32e31b3 feat(mldsa): implement ML-DSA private key loader with builder pattern`
 
+**详细实现思路**: [2026-03-02-mldsa-ike-auth-implementation-notes.md](plans/2026-03-02-mldsa-ike-auth-implementation-notes.md)
+
 **待完成**:
 - IKE 提案配置调试
 - ML-DSA IKE_AUTH 认证集成 (需要修改认证流程使用 ML-DSA 而不是 ECDSA)
+
+---
+
+## 关键代码位置
+
+| 功能 | 文件 |
+|------|------|
+| EncCert提取和SM2公钥设置 | `ike_cert_post.c` |
+| SM2-KEM加解密 | `gmalg_ke.c` |
+| IKE_INTERMEDIATE处理 | `ike_init.c` |
+| IntAuth计算 | `keymat_v2.c` |
+| RFC 9370密钥派生 | `keymat_v2.c` |
+| ML-DSA签名器 | `mldsa_signer.c/h` |
+| ML-DSA私钥加载器 | `mldsa_private_key.c/h` |
+| ML-DSA插件注册 | `mldsa_plugin.c` |
+| ML-DSA证书生成 | `scripts/generate_mldsa_*.c` |
+| ML-DSA混合证书生成 | `scripts/generate_mldsa_hybrid_cert.c` |

@@ -169,6 +169,71 @@ sudo make install
 | SM2-KEM 加解密 | `src/libstrongswan/plugins/gmalg/gmalg_ke.c` |
 | IKE_INTERMEDIATE | `src/libcharon/sa/ikev2/tasks/ike_init.c` |
 | IntAuth 计算 | `src/libcharon/sa/keymat_v2.c` |
+| ML-DSA 签名器 | `src/libstrongswan/plugins/mldsa/mldsa_signer.c` |
+| ML-DSA 私钥加载器 | `src/libstrongswan/plugins/mldsa/mldsa_private_key.c` |
+
+---
+
+## ML-DSA 混合证书测试
+
+### ML-DSA 证书目录结构
+
+```
+docker/initiator/certs/mldsa/
+├── mldsa_ca.pem              # CA 证书
+├── mldsa_ca_key.pem          # CA 私钥
+├── initiator_hybrid_cert.pem # 混合证书 (ECDSA 占位符 + ML-DSA 扩展)
+└── initiator_mldsa_key.bin   # ML-DSA 私钥 (4032 bytes)
+
+docker/responder/certs/mldsa/
+├── mldsa_ca.pem
+├── mldsa_ca_key.pem
+├── responder_hybrid_cert.pem
+└── responder_mldsa_key.bin
+```
+
+### ML-DSA 插件编译
+
+```bash
+cd /home/ipsec/strongswan
+./configure --enable-mldsa --enable-gmalg --enable-swanctl --with-gmssl=/usr/local
+make -j$(nproc)
+sudo make install
+
+# 修复 rpath (重要!)
+sudo chrpath -r /usr/local/lib /usr/local/lib/ipsec/plugins/libstrongswan-mldsa.so
+```
+
+### ML-DSA 配置文件
+
+```bash
+# 使用 ML-DSA 混合证书配置
+cp docker/initiator/config/swanctl-mldsa-hybrid.conf docker/initiator/config/swanctl.conf
+cp docker/responder/config/swanctl-mldsa-hybrid.conf docker/responder/config/swanctl.conf
+
+# 复制证书和私钥到挂载目录
+cp docker/initiator/certs/mldsa/initiator_hybrid_cert.pem docker/initiator/certs/x509/
+cp docker/initiator/certs/mldsa/initiator_mldsa_key.bin docker/initiator/certs/private/
+cp docker/initiator/certs/mldsa/mldsa_ca.pem docker/initiator/certs/x509ca/
+
+cp docker/responder/certs/mldsa/responder_hybrid_cert.pem docker/responder/certs/x509/
+cp docker/responder/certs/mldsa/responder_mldsa_key.bin docker/responder/certs/private/
+cp docker/responder/certs/mldsa/mldsa_ca.pem docker/responder/certs/x509ca/
+```
+
+### ML-DSA 验证命令
+
+```bash
+# 检查 ML-DSA 私钥是否加载成功
+docker logs pqgm-initiator 2>&1 | grep -i "ML-DSA"
+
+# 期望输出:
+# ML-DSA: mldsa_private_key_load called, type=0
+# ML-DSA: BUILD_BLOB_* (type 5), len=4032
+# ML-DSA: BUILD_END
+# ML-DSA: loaded private key successfully
+# loaded private key from '/usr/local/etc/swanctl/private/initiator_mldsa_key.bin'
+```
 
 ---
 
@@ -216,3 +281,4 @@ docker-compose down && docker-compose up -d
 | 日期 | 更新内容 |
 |------|----------|
 | 2026-03-02 | 创建文档，整理 Docker 测试环境 |
+| 2026-03-02 | 添加 ML-DSA 混合证书测试环境说明 |
