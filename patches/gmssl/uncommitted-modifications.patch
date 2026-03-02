@@ -1,0 +1,39 @@
+diff --git a/include/gmssl/kyber.h b/include/gmssl/kyber.h
+index 2802441f..4155a960 100644
+--- a/include/gmssl/kyber.h
++++ b/include/gmssl/kyber.h
+@@ -93,9 +93,6 @@ int  kyber_poly_equ(const kyber_poly_t a, const kyber_poly_t b);
+ void kyber_poly_add(kyber_poly_t r, const kyber_poly_t a, const kyber_poly_t b);
+ void kyber_poly_sub(kyber_poly_t r, const kyber_poly_t a, const kyber_poly_t b);
+ 
+-
+-int16_t zeta[256];
+-
+ void init_zeta(void);
+ 
+ int  kyber_poly_ntt(int16_t a[256]);
+diff --git a/src/bn.c b/src/bn.c
+index cde0df90..1315017a 100644
+--- a/src/bn.c
++++ b/src/bn.c
+@@ -12,6 +12,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <assert.h>
++#include <stdint.h>
+ #include <gmssl/endian.h>
+ 
+ 
+diff --git a/src/kyber.c b/src/kyber.c
+index 87360cdd..d5bc34e0 100644
+--- a/src/kyber.c
++++ b/src/kyber.c
+@@ -236,7 +236,7 @@ void kyber_poly_sub(kyber_poly_t r, const kyber_poly_t a, const kyber_poly_t b)
+ 	}
+ }
+ 
+-int16_t zeta[256];
++static int16_t zeta[256];
+ 
+ void init_zeta(void)
+ {
