@@ -124,8 +124,55 @@ nm -D /usr/local/lib/libgmssl.so.3 | grep x509_cert
 
 ---
 
+### BUG-004: ML-DSA 签名验证失败 - 混合证书公钥不匹配
+
+**状态**: ❌ 未修复 (当前阻塞问题)
+
+**发现时间**: 2026-03-02
+
+**症状**:
+```
+[LIB] ML-DSA: signature created successfully, len=3309
+[IKE] authentication of 'initiator.pqgm.test' (myself) with (23) failed
+```
+
+**根因**:
+1. Initiator 成功生成 ML-DSA 签名 (3309 bytes)
+2. Responder 收到签名后，从证书提取公钥进行验证
+3. **混合证书的 SubjectPublicKeyInfo 是 ECDSA P-256**
+4. Responder 尝试用 ECDSA 公钥验证 ML-DSA 签名 → 验证失败
+
+**流程分析**:
+```
+Initiator                           Responder
+   |                                    |
+   |  IKE_AUTH (ML-DSA signature)       |
+   |----------------------------------->|
+   |                                    | 1. 提取证书公钥 (ECDSA P-256)
+   |                                    | 2. 尝试用 ECDSA 验证 ML-DSA 签名
+   |                                    | 3. 验证失败 → AUTH_FAILED
+   |<-----------------------------------|
+   |        AUTH_FAILED                 |
+```
+
+**待完成工作**:
+1. **实现 ML-DSA 公钥提取**: 从混合证书扩展 (OID 1.3.6.1.4.1.99999.1.2) 提取 ML-DSA 公钥
+2. **实现 public_key_t 接口**: 添加 ML-DSA 公钥的 `verify()` 方法
+3. **修改认证流程**: 识别混合证书，使用正确的公钥类型进行验证
+
+**相关文件**:
+- `src/libstrongswan/credentials/keys/public_key.c` - 添加 verify 方法
+- `src/libcharon/sa/ikev2/tasks/ike_auth.c` - 认证流程修改
+- `src/libstrongswan/plugins/mldsa/mldsa_public_key.c` - 新建公钥实现
+
+**临时解决方案**:
+- 无 (这是必须解决的架构问题)
+
+---
+
 ## 文档更新记录
 
 | 日期 | 更新内容 |
 |------|---------|
 | 2026-03-02 | 创建文档，记录BUG-001/002/003 |
+| 2026-03-02 | 添加 BUG-004: ML-DSA 验证失败问题 |

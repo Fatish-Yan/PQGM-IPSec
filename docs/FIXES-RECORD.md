@@ -382,6 +382,121 @@ DER: 06 0A 2B 06 01 04 01 86 8D 1F 01 02
 
 ---
 
+### 2026-03-02: scheme_map 添加 ML-DSA 支持
+
+**问题**: ML-DSA 私钥无法选择正确的签名方案
+
+**症状**:
+```
+authentication of 'initiator.pqgm.test' (myself) with (23) failed
+```
+
+**根因**: `public_key.c` 中的 `scheme_map` 数组缺少 ML-DSA 条目
+
+**修复文件**: `/home/ipsec/strongswan/src/libstrongswan/credentials/keys/public_key.c`
+
+**修复内容**:
+```c
+// 在 scheme_map 数组末尾添加
+{ KEY_MLDSA65, 0, { .scheme = SIGN_MLDSA65 }},
+```
+
+**位置**: 约 line 120，在 `{ KEY_ED448, ... }` 之后
+
+**验证结果**:
+- ✅ ML-DSA 签名方案选择正确 (scheme=23)
+- ✅ 签名生成成功 (3309 bytes)
+
+---
+
+### 2026-03-02: credential_manager ML-DSA 回退查找
+
+**问题**: 混合证书场景下私钥查找失败
+
+**症状**:
+```
+no private key found for 'initiator.pqgm.test'
+```
+
+**根因**:
+1. 混合证书的 SubjectPublicKeyInfo 是 ECDSA P-256
+2. strongSwan 用 ECDSA 公钥指纹查找私钥
+3. ML-DSA 私钥指纹不匹配 ECDSA 证书公钥指纹
+
+**修复文件**: `/home/ipsec/strongswan/src/libstrongswan/credentials/credential_manager.c`
+
+**修复内容** (在 `get_private()` 函数末尾，约 line 600):
+```c
+/* Fallback for ML-DSA hybrid certificates:
+ * If standard lookup failed and we're looking for ML-DSA (or any) key,
+ * try to find any ML-DSA key directly.
+ */
+if (!private && (type == KEY_MLDSA65 || type == KEY_ANY))
+{
+    enumerator_t *key_enum;
+    private_key_t *key;
+
+    /* Enumerate all ML-DSA keys (NULL keyid = match any) */
+    key_enum = create_private_enumerator(this, KEY_MLDSA65, NULL);
+    if (key_enum)
+    {
+        while (key_enum->enumerate(key_enum, &key))
+        {
+            /* Found an ML-DSA key, use it */
+            private = key->get_ref(key);
+            DBG1(DBG_LIB, "ML-DSA: found ML-DSA private key via fallback lookup");
+            break;
+        }
+        key_enum->destroy(key_enum);
+    }
+}
+```
+
+**验证结果**:
+```
+[LIB] ML-DSA: found ML-DSA private key via fallback lookup
+[LIB] ML-DSA: sign() called, scheme=23, loaded=1, sig_ctx=0x7a90e00021c0
+[LIB] ML-DSA: signature created successfully, len=3309
+```
+- ✅ ML-DSA 私钥回退查找成功
+- ✅ 签名生成成功
+
+---
+
+### 2026-03-02: mldsa 插件 OpenSSL 链接修复
+
+**问题**: `CRYPTO_free` 和 `CRYPTO_malloc` 符号未定义
+
+**症状**:
+```
+symbol lookup error: /usr/local/lib/ipsec/plugins/libstrongswan-mldsa.so: undefined symbol: CRYPTO_free
+```
+
+**根因**: liboqs 内部使用 OpenSSL，但插件未链接 OpenSSL
+
+**修复文件**: `/home/ipsec/strongswan/src/libstrongswan/plugins/mldsa/Makefile.am`
+
+**修复内容**:
+```makefile
+if MONOLITHIC
+libstrongswan_mldsa_la_LIBADD = $(liboqs_LIBS) -lssl -lcrypto
+else
+libstrongswan_mldsa_la_LIBADD = \
+    $(top_builddir)/src/libstrongswan/libstrongswan.la \
+    $(liboqs_LIBS) -lssl -lcrypto
+endif
+```
+
+**额外修复**: rpath 问题
+```bash
+sudo chrpath -r /usr/local/lib /usr/local/lib/ipsec/plugins/libstrongswan-mldsa.so
+```
+
+**验证结果**:
+- ✅ 插件依赖正确: `libcrypto.so.3` 和 `liboqs.so.8`
+
+---
+
 ## 关键代码位置
 
 | 功能 | 文件 |
@@ -396,3 +511,5 @@ DER: 06 0A 2B 06 01 04 01 86 8D 1F 01 02
 | ML-DSA插件注册 | `mldsa_plugin.c` |
 | ML-DSA证书生成 | `scripts/generate_mldsa_*.c` |
 | ML-DSA混合证书生成 | `scripts/generate_mldsa_hybrid_cert.c` |
+| **签名方案映射** | `public_key.c:scheme_map` |
+| **私钥回退查找** | `credential_manager.c:get_private()` |

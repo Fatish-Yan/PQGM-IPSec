@@ -198,7 +198,7 @@ struct private_key_t {
 
 ### 5.1 IKE 提案匹配
 
-**当前问题**: `NO_PROPOSAL_CHOSEN` 错误
+**当前问题**: ~~`NO_PROPOSAL_CHOSEN` 错误~~ ✅ 已解决
 
 **原因分析**: Initiator 和 Responder 的提案配置不匹配
 
@@ -206,15 +206,100 @@ struct private_key_t {
 
 ### 5.2 ML-DSA IKE_AUTH 认证
 
-**当前问题**: `auth = pubkey` 使用证书中的 ECDSA 公钥进行认证
+**当前状态**:
+- ✅ ML-DSA 私钥加载成功
+- ✅ ML-DSA 签名生成成功 (3309 bytes)
+- ❌ Responder 端验证失败
+
+**当前问题**: Responder 使用证书中的 ECDSA 公钥验证 ML-DSA 签名
 
 **需要实现**:
-1. 修改 IKE_AUTH 认证流程识别 ML-DSA 混合证书
-2. 从证书扩展提取 ML-DSA 公钥
-3. 使用 ML-DSA 私钥生成签名
-4. 使用 ML-DSA 公钥验证签名
+1. ~~修改 IKE_AUTH 认证流程识别 ML-DSA 混合证书~~
+2. ~~从证书扩展提取 ML-DSA 公钥~~
+3. ✅ 使用 ML-DSA 私钥生成签名
+4. ❌ 使用 ML-DSA 公钥验证签名 (阻塞中)
 
 **关键文件**: `src/libcharon/sa/ikev2/tasks/ike_auth.c`
+
+---
+
+## 五点五、最新进展 (2026-03-02 下午)
+
+### 5.5.1 签名生成成功
+
+**日志证据**:
+```
+05[LIB] ML-DSA: found ML-DSA private key via fallback lookup
+05[LIB] ML-DSA: sign() called, scheme=23, loaded=1, sig_ctx=0x7a90e00021c0
+05[LIB] ML-DSA: signature created successfully, len=3309
+```
+
+### 5.5.2 核心修复
+
+#### 修复 1: scheme_map 添加 ML-DSA
+
+**文件**: `src/libstrongswan/credentials/keys/public_key.c`
+
+```c
+// 在 scheme_map 数组添加
+{ KEY_MLDSA65, 0, { .scheme = SIGN_MLDSA65 }},
+```
+
+**作用**: 让 ML-DSA 私钥能够选择正确的签名方案 (SIGN_MLDSA65 = 23)
+
+#### 修复 2: credential_manager 回退查找
+
+**文件**: `src/libstrongswan/credentials/credential_manager.c`
+
+```c
+/* Fallback for ML-DSA hybrid certificates */
+if (!private && (type == KEY_MLDSA65 || type == KEY_ANY))
+{
+    enumerator_t *key_enum;
+    private_key_t *key;
+    key_enum = create_private_enumerator(this, KEY_MLDSA65, NULL);
+    if (key_enum)
+    {
+        while (key_enum->enumerate(key_enum, &key))
+        {
+            private = key->get_ref(key);
+            DBG1(DBG_LIB, "ML-DSA: found ML-DSA private key via fallback lookup");
+            break;
+        }
+        key_enum->destroy(key_enum);
+    }
+}
+```
+
+**作用**: 混合证书场景下，标准指纹查找失败时，直接枚举所有 ML-DSA 私钥
+
+#### 修复 3: Makefile.am OpenSSL 链接
+
+**文件**: `src/libstrongswan/plugins/mldsa/Makefile.am`
+
+```makefile
+libstrongswan_mldsa_la_LIBADD = $(liboqs_LIBS) -lssl -lcrypto
+```
+
+**作用**: 解决 `CRYPTO_free` 未定义符号问题
+
+### 5.5.3 当前阻塞问题
+
+**问题**: Responder 无法验证 ML-DSA 签名
+
+**根因**:
+```
+混合证书结构:
+├── SubjectPublicKeyInfo: ECDSA P-256 (占位符)  ← Responder 用这个验证
+└── 扩展 1.3.6.1.4.1.99999.1.2: ML-DSA 公钥   ← 应该用这个验证
+```
+
+**解决方案**:
+1. 创建 `mldsa_public_key.c/h` 实现 `public_key_t` 接口
+2. 添加 `verify()` 方法使用 ML-DSA 公钥验证签名
+3. 修改认证流程识别混合证书并提取正确的公钥
+
+**预计工作量**: 中等 (需要修改认证流程架构)
 
 ---
 
