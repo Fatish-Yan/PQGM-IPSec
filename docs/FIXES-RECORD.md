@@ -345,3 +345,35 @@ DER: 06 0A 2B 06 01 04 01 86 8D 1F 01 02
 **详细记录**: [MLDSA-HYBRID-CERT-SUMMARY.md](MLDSA-HYBRID-CERT-SUMMARY.md)
 
 **Git 提交**: `84bdd30 feat(mldsa): implement ML-DSA public key extraction from certificate extension`
+
+---
+
+### 2026-03-02: ML-DSA 私钥加载器实现
+
+**问题**: strongSwan 无法加载原始 ML-DSA 二进制私钥文件 (4032 bytes)
+
+**解决方案**: 实现 PRIVKEY builder 模式的私钥加载器
+
+**实现**:
+1. **mldsa_private_key.c/h**: 实现私钥加载器
+   - 使用 `PLUGIN_REGISTER(PRIVKEY, ...)` 注册
+   - 支持 `BUILD_BLOB`、`BUILD_BLOB_PEM`、`BUILD_FROM_FILE` builder parts
+   - 使用 `chunk_map()` 读取文件
+   - 实现 `private_key_t` 接口
+
+2. **关键修复**:
+   - 添加 `__attribute__((visibility("default")))` 导出函数符号
+   - 正确处理 `BUILD_BLOB_PEM` 类型 (type=5)
+   - 修复 rpath 问题 (`chrpath -r /usr/local/lib`)
+
+**验证结果**:
+- ✅ ML-DSA 私钥成功加载 (4032 bytes)
+- ✅ 日志显示: `loaded private key from '.../initiator_mldsa_key.bin'`
+- ✅ 日志显示: `ML-DSA: loaded private key successfully`
+- ✅ 从 5 builders 增加到 7 builders
+
+**Git 提交**: `32e31b3 feat(mldsa): implement ML-DSA private key loader with builder pattern`
+
+**待完成**:
+- IKE 提案配置调试
+- ML-DSA IKE_AUTH 认证集成 (需要修改认证流程使用 ML-DSA 而不是 ECDSA)
