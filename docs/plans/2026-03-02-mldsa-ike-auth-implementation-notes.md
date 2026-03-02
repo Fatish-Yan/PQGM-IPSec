@@ -294,12 +294,51 @@ libstrongswan_mldsa_la_LIBADD = $(liboqs_LIBS) -lssl -lcrypto
 └── 扩展 1.3.6.1.4.1.99999.1.2: ML-DSA 公钥   ← 应该用这个验证
 ```
 
-**解决方案**:
-1. 创建 `mldsa_public_key.c/h` 实现 `public_key_t` 接口
-2. 添加 `verify()` 方法使用 ML-DSA 公钥验证签名
-3. 修改认证流程识别混合证书并提取正确的公钥
+**解决方案** (已实现):
+1. ✅ 创建 `mldsa_public_key.c/h` 实现 `public_key_t` 接口
+2. ✅ 添加 `verify()` 方法使用 ML-DSA 公钥验证签名
+3. ✅ 修改 credential_manager.c 识别混合证书并提取正确的公钥
 
-**预计工作量**: 中等 (需要修改认证流程架构)
+---
+
+## 五点六、最新进展 (2026-03-02 晚)
+
+### 5.6.1 已实现组件
+
+| 组件 | 文件 | 状态 |
+|------|------|------|
+| ML-DSA 签名器 | mldsa_signer.c/h | ✅ 完成 |
+| ML-DSA 私钥加载器 | mldsa_private_key.c/h | ✅ 完成 |
+| ML-DSA 公钥加载器 | mldsa_public_key.c/h | ✅ 新增 |
+| scheme_map 更新 | public_key.c | ✅ 完成 |
+| 私钥回退查找 | credential_manager.c | ✅ 完成 |
+| 混合证书公钥提取 | credential_manager.c | ✅ 新增 |
+
+### 5.6.2 测试结果
+
+**签名生成测试**:
+```
+[LIB] ML-DSA: found ML-DSA private key via fallback lookup
+[LIB] ML-DSA: sign() called, scheme=23, loaded=1, sig_ctx=0x78473c019370
+[LIB] ML-DSA: signature created successfully, len=3309
+[IKE] authentication of 'initiator.pqgm.test' (myself) with (23) failed
+```
+
+**状态**:
+- ✅ 私钥查找成功
+- ✅ 签名生成成功 (3309 bytes)
+- ❌ 认证仍然失败 (待调试)
+
+### 5.6.3 待调查问题
+
+**问题**: 签名创建成功但认证失败
+
+**可能原因**:
+1. RFC 7427 签名认证数据格式问题
+2. 证书编码问题导致公钥提取失败
+3. IKE_AUTH 消息发送失败
+
+**Git 提交**: `0fcf4c497b feat(mldsa): implement ML-DSA public key extraction from hybrid certificates`
 
 ---
 
@@ -309,7 +348,9 @@ libstrongswan_mldsa_la_LIBADD = $(liboqs_LIBS) -lssl -lcrypto
 |------|------|------|
 | mldsa_private_key.c | ~283 | 私钥加载器实现 |
 | mldsa_private_key.h | ~31 | 私钥加载器接口 |
-| mldsa_plugin.c | ~72 | 插件注册 |
+| mldsa_public_key.c | ~370 | 公钥加载器实现 (新增) |
+| mldsa_public_key.h | ~47 | 公钥加载器接口 (新增) |
+| mldsa_plugin.c | ~80 | 插件注册 (更新) |
 | swanctl-mldsa-hybrid.conf | ~38 | 配置文件 |
 
 ---
