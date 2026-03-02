@@ -209,3 +209,60 @@ typedef struct {
 | RFC 9370密钥派生 | `keymat_v2.c` |
 | ML-DSA签名器 | `mldsa_signer.c/h` |
 | ML-DSA证书生成 | `scripts/generate_mldsa_*.c` |
+
+---
+
+### 2026-03-02: ML-DSA 混合证书方案实现
+
+**问题**: OpenSSL 3.0.2 不支持 ML-DSA 证书生成，无法生成标准的 ML-DSA X.509 证书
+
+**解决方案**: 混合证书方案 - 在标准 X.509 证书的自定义扩展中存储 ML-DSA 公钥
+
+**实现**:
+1. **混合证书生成器** (`scripts/generate_mldsa_hybrid_cert.c`):
+   - 生成 ML-DSA-65 密钥对 (liboqs)
+   - 生成 ECDSA P-256 占位符密钥
+   - 创建包含 ML-DSA 公钥扩展的 X.509 证书
+   - 使用 ECDSA CA 签名证书
+
+2. **mldsa 插件更新** (`mldsa_signer.c`):
+   - 新增 `extract_mldsa_pubkey_from_cert()` - 从证书扩展提取 ML-DSA 公钥
+   - `set_key()` 支持证书数据作为输入 (长度 > 500 bytes)
+
+**证书结构**:
+```
+X.509 v3 证书
+├── SubjectPublicKeyInfo: ECDSA P-256 (占位符)
+├── 扩展:
+│   ├── SAN: DNS:<name>.pqgm.test
+│   ├── keyUsage: digitalSignature, keyEncipherment
+│   └── 1.3.6.1.4.1.99999.1.2: ML-DSA-65 公钥 (1952 bytes)
+└── 签名: ECDSA-SHA256 (CA 签名)
+```
+
+**OID 定义**:
+```
+OID: 1.3.6.1.4.1.99999.1.2
+DER: 06 0A 2B 06 01 04 01 86 8D 1F 01 02
+```
+
+**修复的 Bug**:
+1. OID DER 编码错误: `87 6F 0F` → `86 8D 1F` (base-128 编码)
+2. 重复的 mldsa_oid 定义导致变量遮蔽
+3. 测试文件中 TRUE/FALSE 未定义
+
+**验证结果**:
+- ✅ 混合证书生成成功
+- ✅ ML-DSA 公钥从证书扩展提取成功
+- ✅ 签名/验证测试通过 (7/7)
+- ⏳ IKE_AUTH 集成测试待进行
+
+**生成的文件**:
+- `docker/initiator/certs/mldsa/initiator_hybrid_cert.pem`
+- `docker/initiator/certs/mldsa/initiator_mldsa_key.bin` (4032 bytes)
+- `docker/responder/certs/mldsa/responder_hybrid_cert.pem`
+- `docker/responder/certs/mldsa/responder_mldsa_key.bin` (4032 bytes)
+
+**详细记录**: [MLDSA-HYBRID-CERT-SUMMARY.md](MLDSA-HYBRID-CERT-SUMMARY.md)
+
+**Git 提交**: `84bdd30 feat(mldsa): implement ML-DSA public key extraction from certificate extension`
