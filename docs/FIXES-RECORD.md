@@ -6,6 +6,80 @@
 
 ## 修复历史
 
+### 2026-03-03: SM2-KEM 性能优化 (22x 加速!)
+
+**问题**: SM2-KEM RTT 延迟高达 31.5ms，占总握手时间的 79.4%
+
+**根因分析**:
+- GmSSL `sm2_private_key_info_decrypt_from_pem()` 需要 ~30ms 解密 PEM 私钥
+- 每次 `set_public_key()` 都会重新从加密 PEM 加载私钥
+- SM2 加解密本身只需 ~1ms，但密钥加载开销是 30 倍！
+
+**性能基准测试结果**:
+| 操作 | 时间 |
+|------|------|
+| 私钥加载 (加密 PEM) | **30.4 ms** ⚠️ |
+| SM2 加密 | 0.5 ms |
+| SM2 解密 | 0.4 ms |
+| SM2-KEM (enc+dec) | ~1 ms |
+
+**修复方案**: 私钥预加载缓存
+
+1. **gmalg_plugin.c**: 在插件初始化时预加载私钥
+```c
+PLUGIN_DEFINE(gmalg)
+{
+    // ... plugin init ...
+    gmalg_sm2_ke_preload_my_key();  // 预加载私钥
+    return &this->public.plugin;
+}
+```
+
+2. **gmalg_ke.c**: 添加预加载函数
+```c
+void gmalg_sm2_ke_preload_my_key(void)
+{
+    // 从配置读取路径和密码
+    // 加载私钥到全局变量 g_my_sm2_key
+    // 设置 g_my_sm2_key_set = TRUE
+}
+```
+
+3. **gmalg_ke.c**: `set_public_key()` 优先使用缓存
+```c
+/* Priority 1: Use global my key set from config */
+if (g_my_sm2_key_set)
+{
+    memcpy(&sm2_my_key, &g_my_sm2_key, sizeof(SM2_KEY));
+    goto decrypt_with_loaded_key;
+}
+```
+
+**优化结果**:
+| RTT | 优化前 | 优化后 | 提升 |
+|-----|--------|--------|------|
+| **RTT 3 (SM2-KEM)** | **31.5 ms** | **1.4 ms** | **22x 加速！** |
+| 总握手时间 | 39.6 ms | 11.1 ms | **3.5x 加速** |
+
+**日志验证**:
+```
+SM2-KEM: preloading SM2 private key for performance
+SM2-KEM: loaded config enc_key = enc_key.pem
+SM2-KEM: preloaded SM2 private key successfully (encrypted PEM)
+...
+SM2-KEM: set_public_key called with 140 bytes
+SM2-KEM: using global my key  <-- 使用缓存，不再重新加载！
+```
+
+**修改文件**:
+- `/home/ipsec/strongswan/src/libstrongswan/plugins/gmalg/gmalg_plugin.c`
+- `/home/ipsec/strongswan/src/libstrongswan/plugins/gmalg/gmalg_ke.c`
+- `/home/ipsec/strongswan/src/libstrongswan/plugins/gmalg/gmalg_ke.h`
+
+**抓包文件**: `captures/sm2kem-optimized-20260303-154849.pcap`
+
+---
+
 ### 2026-03-02: IKE_AUTH ECDSA 证书认证 + IntAuth 绑定验证
 
 **问题**: 在证书认证模式下，SM2-KEM 私钥加载失败
