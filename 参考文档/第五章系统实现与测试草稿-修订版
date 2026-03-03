@@ -374,8 +374,8 @@ if (message->get_message_id(message) == 1) {
 
 ```
 IKE_SA_INIT 完成
-    → 检测到 ADDKE1 (ml-kem-768) → IKE_INTERMEDIATE #1
-    → 检测到 ADDKE2 (sm2-kem)    → IKE_INTERMEDIATE #2
+    → 检测到 ADDKE1 (sm2-kem) → IKE_INTERMEDIATE #1
+    → 检测到 ADDKE2 (ml-kem-768)    → IKE_INTERMEDIATE #2
 ```
 
 **密钥派生（RFC 9370）**：
@@ -384,10 +384,10 @@ IKE_SA_INIT 完成
 // 1. 初始密钥材料（IKE_SA_INIT）
 keymat_0 = prf(skeyseed, Ni | Nr | SPIi | SPIr)
 
-// 2. ADDKE1 密钥更新（ML-KEM-768）
+// 2. ADDKE1 密钥更新（SM2-KEM）
 keymat_1 = prf(keymat_0, "additional key material 1" | SK_ml_kem)
 
-// 3. ADDKE2 密钥更新（SM2-KEM）
+// 3. ADDKE2 密钥更新（ML-KEM-768）
 keymat_2 = prf(keymat_1, "additional key material 2" | SK_sm2)
 
 // 4. 最终 KEYMAT
@@ -462,7 +462,7 @@ proposals = aes256-sha384-x25519-ke1_mlkem768
 
 ```
 RTT 1: IKE_SA_INIT
-       协商 KE=x25519, ADDKE1=ml-kem-768, ADDKE2=sm2-kem
+       协商 KE=x25519, ADDKE1=sm2-kem, ADDKE2=ml-kem-768
        │
 RTT 2: IKE_INTERMEDIATE #0（消息 ID = 1）
        交换双证书：SignCert + EncCert

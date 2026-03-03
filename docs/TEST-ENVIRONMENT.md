@@ -16,16 +16,16 @@ docker/
 │
 ├── initiator/                  # Initiator 配置
 │   ├── config/
-│   │   ├── swanctl.conf        # 连接配置 (PSK模式)
+│   │   ├── swanctl.conf        # 连接配置
 │   │   └── strongswan.conf     # 日志配置
 │   └── certs/
 │       ├── x509/               # 证书 (挂载到 /usr/local/etc/swanctl/x509)
 │       │   ├── encCert.pem     # 本端 SM2 加密证书
 │       │   ├── signCert.pem    # 本端 SM2 签名证书
 │       │   └── responder-signCert.pem  # 对端签名证书
-│       ├── private/            # 私钥 (挂载到 /usr/local/etc/swanctl/private)
+│   ├── private/            # 私钥 (挂载到 /usr/local/etc/swanctl/private)
 │       │   ├── signKey.pem     # 本端 SM2 签名私钥
-│       │   └── sm2_enc_key.pem # 本端 SM2 加密私钥
+│       │   └── enc_key.pem      # 本端 SM2 加密私钥 (⚠️ 必须是 enc_key.pem!)
 │       ├── x509ca/             # CA证书 (挂载到 /usr/local/etc/swanctl/x509ca)
 │       │   └── caCert.pem      # SM2 CA 证书
 │       └── pubkey/             # 公钥 (挂载到 /usr/local/etc/swanctl/pubkey)
@@ -43,7 +43,7 @@ docker/
         │   └── initiator-signCert.pem
         ├── private/
         │   ├── signKey.pem
-        │   └── sm2_enc_key.pem
+        │   └── enc_key.pem
         ├── x509ca/
         │   └── caCert.pem
         └── pubkey/
@@ -111,10 +111,10 @@ docker exec -it pqgm-responder swanctl --list-sas
 
 ### SM2 双证书机制
 
-- **signCert.pem**: SM2 签名证书 (用于身份认证)
+- **signCert.pem**: SM2 签名证书 (用于早期Dos门控)
 - **encCert.pem**: SM2 加密证书 (用于 SM2-KEM 密钥交换)
 - **signKey.pem**: SM2 签名私钥
-- **sm2_enc_key.pem**: SM2 加密私钥 (代码硬编码此文件名!)
+- **enc_key.pem**: SM2 加密私钥 (代码硬编码此文件名!)
 
 ### GmSSL OID 值 (重要!)
 
@@ -249,11 +249,11 @@ docker logs pqgm-initiator 2>&1 | grep -i "ML-DSA"
 
 ### 2. 私钥文件找不到
 
-**症状**: `cannot open /usr/local/etc/swanctl/private/sm2_enc_key.pem`
+**症状**: `cannot open /usr/local/etc/swanctl/private/enc_key.pem`
 
-**原因**: 私钥文件名必须是 `sm2_enc_key.pem` (代码硬编码)
+**原因**: 私钥文件名必须是 `enc_key.pem` (代码硬编码)
 
-**解决**: 确保私钥目录中有 `sm2_enc_key.pem`
+**解决**: 确保私钥目录中有 `enc_key.pem` (⚠️ 必须与 encCert.pem 配对!)
 
 ### 3. 容器启动失败
 
@@ -539,5 +539,292 @@ initiate completed successfully
 **实验性说明**:
 - ⚠️ 信任链验证使用实验性绕过（检测 ECDSA 公钥类型）
 - ⚠️ 配置中移除了 `cacerts` 约束
-- ⚠️ 仅适用于实验环境，生产环境需要正确的 PKI 基础设施
+- ⚠️ 仅适用于实验环境，生产环境需要正确的 PKI 域础设施
+
+---
+
+### ML-DSA 5-RTT 完整测试 (2026-03-03)
+
+**测试状态**: ✅ 完全成功！
+
+**配置文件**: `swanctl-5rtt-mldsa.conf`
+
+**协议流程**:
+```
+RTT 1: IKE_SA_INIT - 协商三重密钥交换 (x25519 + SM2-KEM + ML-KEM-768)
+RTT 2: IKE_INTERMEDIATE #0 - 双证书分发 (SignCert + EncCert)
+RTT 3: IKE_INTERMEDIATE #1 - SM2-KEM 密钥交换 (141 字节密文)
+RTT 4: IKE_INTERMEDIATE #2 - ML-KEM-768 密钥交换 (分片传输)
+RTT 5: IKE_AUTH - ML-DSA-65 后量子签名认证 (3309 字节签名)
+```
+
+**成功日志**:
+```
+[CFG] selected proposal: IKE:AES_CBC_256/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/CURVE_25519/KE1_(1051)/KE2_ML_KEM_768
+[IKE] SM2-KEM: computed shared secret (64 bytes)
+[IKE] RFC 9370 Key Derivation: Update after IKE_INTERMEDIATE KE
+[LIB] ML-DSA: signature created successfully, len=3309
+[IKE] authentication of 'initiator.pqgm.test' (myself) with (23) successful
+[LIB] ML-DSA: extracted pubkey, 1952 bytes
+[LIB] ML-DSA: signature verification successful
+[IKE] authentication of 'responder.pqgm.test' with (23) successful
+[IKE] IKE_SA pqgm-5rtt-mldsa[2] established between 172.28.0.10[initiator.pqgm.test]...172.28.0.20[responder.pqgm.test]
+[IKE] CHILD_SA net{2} established with SPIs c9c330ab_i c7d96123_o
+initiate completed successfully
+```
+
+**功能验证**:
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| 三重密钥交换协商 | ✅ | x25519 + SM2-KEM + ML-KEM-768 |
+| SM2-KEM 密钥交换 | ✅ | 141 字节密文，64 字节共享密钥 |
+| ML-KEM-768 密钥交换 | ✅ | 消息分片传输 |
+| RFC 9370 密钥派生 | ✅ | 每次 KE 后更新 SKEYSEED |
+| 双证书分发 | ✅ | SignCert + EncCert |
+| ML-DSA-65 签名生成 | ✅ | 3309 字节 |
+| ML-DSA-65 签名验证 | ✅ | liboqs 验证成功 |
+| 混合证书公钥提取 | ✅ | 从 OID 扩展提取 1952 字节 |
+| IKE_SA 建立 | ✅ | 完整 5-RTT 流程 |
+| CHILD_SA 建立 | ✅ | IPsec ESP SA |
+
+**提案字符串**: `aes256-sha256-x25519-ke1_sm2kem-ke2_mlkem768`
+
+**认证方式**: ML-DSA 混合证书 (ECDSA P-256 占位符 + ML-DSA 扩展)
+
+---
+
+## 🔧 硬编码参考 (重要!)
+
+> **测试前请确保所有文件名和值都正确！**
+
+### 1. SM2-KEM 相关 (`gmalg_ke.c`)
+
+| 项目 | 硬编码值 | 说明 |
+|------|----------|------|
+| SM2 私钥路径 | `/usr/local/etc/swanctl/private/enc_key.pem` | ⚠️ **必须与 encCert.pem 配对！** |
+| SM2 私钥密码 | `PQGM2026` | 私钥文件密码 |
+| 对端公钥路径 | `/usr/local/etc/swanctl/x509/peer_sm2_pubkey.pem` | fallback 路径 |
+
+```c
+// 位置: src/libstrongswan/plugins/gmalg/gmalg_ke.c
+#define SM2_MY_PRIVKEY_FILE "/usr/local/etc/swanctl/private/enc_key.pem"
+#define SM2_PRIVKEY_PASSWORD "PQGM2026"
+#define SM2_PEER_PUBKEY_FILE "/usr/local/etc/swanctl/x509/peer_sm2_pubkey.pem"
+```
+
+**⚠️ BUG-006 教训**: 之前错误硬编码为 `sm2_enc_key.pem`，导致 SM2-KEM 解密失败！
+
+### 2. ML-DSA 相关 (`mldsa_*.c`)
+
+| 项目 | 硬编码值 | 说明 |
+|------|----------|------|
+| 混合证书扩展 OID | `1.3.6.1.4.1.99999.1.2` | 存储 ML-DSA 公钥 |
+| OID DER 编码 | `06 0A 2B 06 01 04 01 86 8D 1F 01 02` | 12 字节 |
+| 公钥长度 | 1952 字节 | ML-DSA-65 |
+| 私钥长度 | 4032 字节 | ML-DSA-65 |
+| 签名长度 | 3309 字节 | ML-DSA-65 |
+| AUTH 算法 ID | `AUTH_MLDSA_65 = 1053` | 私有使用范围 |
+
+```c
+// 位置: src/libstrongswan/plugins/mldsa/mldsa_public_key.c
+#define MLDSA65_PUBLIC_KEY_BYTES  1952
+#define MLDSA65_SIGNATURE_BYTES   3309
+static const uint8_t MLDSA_OID_DER[] = {0x06, 0x0A, 0x2B, 0x06, 0x01, 0x04, 0x01, 0x86, 0x8D, 0x1F, 0x01, 0x02};
+
+// 位置: src/libstrongswan/plugins/mldsa/mldsa_signer.c
+#define MLDSA65_EXT_OID "1.3.6.1.4.1.99999.1.2"
+```
+
+### 3. GmSSL OID 值 (`ike_cert_post.c`)
+
+| 项目 | 值 | 说明 |
+|------|-----|------|
+| `OID_ec_public_key` | 18 | EC 公钥算法标识 |
+| `OID_sm2` | 5 | SM2 曲线参数标识 |
+
+**正确的 SM2 EncCert 检查条件**:
+```c
+if (x509_key.algor == 18 && x509_key.algor_param == 5)
+{
+    // 这是 SM2 证书
+}
+```
+
+**⚠️ 壸见 BUG-001**: 错误的检查条件 `algor == 17 || algor == 19` 会导致无法识别 SM2 证书！**
+
+### 4. 证书文件命名约定
+
+| 文件类型 | Initiator | Responder | 说明 |
+|----------|-----------|----------|------|
+| SM2 加密证书 | `encCert.pem` | `encCert.pem` | 必须与私钥配对 |
+| SM2 签名证书 | `signCert.pem` | `signCert.pem` | 用于身份认证 |
+| SM2 加密私钥 | `enc_key.pem` | `enc_key.pem` | ⚠️ **必须与 encCert.pem 配对!** |
+| SM2 签名私钥 | `signKey.pem` | `signKey.pem` | 签名用 |
+| ML-DSA 混合证书 | `initiator_hybrid_cert.pem` | `responder_hybrid_cert.pem` | ECDSA + ML-DSA 扩展 |
+| ML-DSA 私钥 | `initiator_mldsa_key.bin` | `responder_mldsa_key.bin` | 4032 字节二进制 |
+| ML-DSA CA 证书 | `mldsa_ca.pem` | `mldsa_ca.pem` | CA 证书 |
+
+**⚠️ 重要提示**:
+1. SM2 加密私钥必须命名为 `enc_key.pem`，不是 `sm2_enc_key.pem`
+2. 私钥密码固定为 `PQGM2026`
+3. ML-DSA 混合证书必须包含 OID `1.3.6.1.4.1.99999.1.2` 扩展
+
+### 5. 算法 ID 汇总 (私有使用范围 1024-65535)
+
+| 算法 | ID | 来源 |
+|------|-----|------|
+| HASH_SM3 | 1032 | gmalg 插件 |
+| ENCR_SM4_ECB | 1040 | gmalg 插件 |
+| ENCR_SM4_CBC | 1041 | gmalg 插件 |
+| ENCR_SM4_CTR | 1042 | gmalg 插件 |
+| AUTH_SM2 | 1050 | gmalg 插件 |
+| KE_SM2 (SM2-KEM) | 1051 | gmalg 插件 |
+| PRF_SM3 | 1052 | gmalg 插件 |
+| AUTH_MLDSA_65 | 1053 | mldsa 插件 |
+| AUTH_MLDSA_44 | 1054 | mldsa 插件 (保留) |
+| AUTH_MLDSA_87 | 1055 | mldsa 插件 (保留) |
+
+---
+
+## 文档更新记录
+
+| 日期 | 更新内容 |
+|------|----------|
+| 2026-03-02 | 创建文档，整理 Docker 测试环境 |
+| 2026-03-02 | 添加 ML-DSA 混合证书测试环境说明 |
+| 2026-03-02 | 更新 ML-DSA IKE_AUTH 当前测试状态 |
+| 2026-03-03 | 添加硬编码参考章节，记录所有硬编码路径和值 |
+| 2026-03-03 | 修正 SM2 私钥文件名为 enc_key.pem |
+| 2026-03-03 | **实现配置化**: 移除 SM2 硬编码路径，改为配置文件读取 |
+
+---
+
+## ⚠️ 代码硬编码参考表 (重要!)
+
+> **2026-03-03 更新**: SM2-KEM 相关路径已配置化，可通过 `strongswan.conf` 配置！
+> **仅 ML-DSA OID 为协议约定，保持硬编码。**
+
+### 0. gmalg 插件配置 (推荐方式)
+
+**配置文件**: `docker/{initiator,responder}/config/strongswan.conf`
+
+```conf
+charon {
+    plugins {
+        gmalg {
+            load = yes
+            # SM2 双证书配置 (文件名，放在 /usr/local/etc/swanctl/x509/)
+            sign_cert = signCert.pem
+            enc_cert = encCert.pem
+            # SM2 加密私钥 (放在 /usr/local/etc/swanctl/private/)
+            enc_key = enc_key.pem
+            # 私钥密码
+            enc_key_secret = PQGM2026
+        }
+    }
+}
+```
+
+**支持的私钥格式**:
+- 加密 PEM (推荐)
+- 无密码 PEM
+- DER 原始格式 (32 字节)
+
+### 1. ~~SM2-KEM 硬编码~~ (已废弃，改为配置)
+
+> **注意**: 以下硬编码已被配置化替代，保留仅供参考
+
+| 项目 | ~~硬编码值~~ | 配置键 |
+|------|-------------|--------|
+| SM2 加密私钥路径 | ~~`/usr/local/etc/swanctl/private/enc_key.pem`~~ | `enc_key` |
+| SM2 私钥密码 | ~~`PQGM2026`~~ | `enc_key_secret` |
+| SM2 加密证书 | ~~`/usr/local/etc/swanctl/x509/encCert.pem`~~ | `enc_cert` |
+
+**默认值** (未配置时):
+- `enc_key`: `/usr/local/etc/swanctl/private/enc_key.pem`
+- `enc_cert`: `/usr/local/etc/swanctl/x509/encCert.pem`
+
+### 2. ML-DSA 硬编码 (`mldsa_*.c`) - 协议约定
+
+> **注意**: OID 是混合证书结构的协议约定，不是配置项
+
+| 项目 | 硬编码值 | 说明 |
+|------|----------|------|
+| **混合证书扩展 OID** | `1.3.6.1.4.1.99999.1.2` | 协议约定 |
+| **OID DER 编码** | `06 0A 2B 06 01 04 01 86 8D 1F 01 02` | 12 字节 |
+| 公钥长度 | 1952 字节 | ML-DSA-65 |
+| 私钥长度 | 4032 字节 | ML-DSA-65 |
+| 签名长度 | 3309 字节 | ML-DSA-65 |
+| AUTH 算法 ID | `AUTH_MLDSA_65 = 1053` | 私有使用范围 |
+
+**混合证书结构**:
+```
+SubjectPublicKeyInfo: ECDSA P-256 (占位符)
+扩展:
+  ├── SAN: DNS:<name>.pqgm.test
+  └── 1.3.6.1.4.1.99999.1.2: OCTET STRING (1952 字节 ML-DSA 公钥)
+签名: ECDSA-SHA256
+```
+
+### 3. GmSSL OID 值 (`ike_cert_post.c`)
+
+| OID 枚举 | 值 | 用途 |
+|----------|-----|------|
+| `OID_ec_public_key` | 18 | 证书公钥算法标识 |
+| `OID_sm2` | 5 | SM2 曲线参数标识 |
+
+**正确的 SM2 EncCert 检查条件**:
+```c
+// 在 ike_cert_post.c 中
+if (x509_key.algor == 18 && x509_key.algor_param == 5)
+{
+    // 这是 SM2 证书
+}
+```
+
+**错误示例**: `algor == 17 || algor == 19` → 会导致无法识别 SM2 证书！
+
+### 4. 证书文件命名约定
+
+| 文件类型 | 命名规则 | 位置 |
+|----------|----------|------|
+| SM2 加密证书 | `encCert.pem` | `certs/x509/` |
+| SM2 签名证书 | `signCert.pem` | `certs/x509/` |
+| SM2 加密私钥 | **`enc_key.pem`** ⚠️ | `certs/private/` |
+| SM2 签名私钥 | `signKey.pem` | `certs/private/` |
+| SM2 CA 证书 | `caCert.pem` | `certs/x509ca/` |
+| ML-DSA 混合证书 | `<name>_hybrid_cert.pem` | `certs/x509/` |
+| ML-DSA 私钥 | `<name>_mldsa_key.bin` | `certs/private/` |
+
+### 5. PSK 认证硬编码
+
+| 项目 | 值 | 位置 |
+|------|-----|------|
+| PSK 十六进制 | `0x5051474d323032365f50534b5f546573745f5365637265744b6579` | swanctl.conf |
+| PSK 明文 | `PQGM-Test-PSK-2026` | 可读形式 |
+
+### 6. 算法 ID 对照表
+
+| 算法 | ID | 来源 |
+|------|-----|------|
+| HASH_SM3 | 1032 | gmalg 插件 |
+| ENCR_SM4_ECB | 1040 | gmalg 插件 |
+| ENCR_SM4_CBC | 1041 | gmalg 插件 |
+| AUTH_SM2 | 1050 | gmalg 插件 |
+| KE_SM2 (SM2-KEM) | 1051 | gmalg 插件 |
+| PRF_SM3 | 1052 | gmalg 插件 |
+| AUTH_MLDSA_65 | 1053 | mldsa 插件 |
+| KEY_MLDSA65 | 6 | public_key.h (枚举值) |
+| SIGN_MLDSA65 | 23 | signature_scheme_t (RFC 7427) |
+
+### 7. 快速检查清单
+
+测试前确保:
+
+- [ ] SM2 加密私钥文件名为 `enc_key.pem` (不是 `sm2_enc_key.pem`)
+- [ ] SM2 私钥密码为 `PQGM2026`
+- [ ] ML-DSA 混合证书包含 OID `1.3.6.1.4.1.99999.1.2` 扩展
+- [ ] ML-DSA 私钥文件后缀为 `.bin` (原始二进制)
+- [ ] swanctl.conf 中的 PSK 两端一致
+- [ ] 提案包含 `-ke1_sm2kem-ke2_mlkem768`
 

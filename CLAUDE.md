@@ -202,7 +202,7 @@ endif
 
 ```
 IKE_SA_INIT:
-  KE=x25519, ADDKE1=ml-kem-768, ADDKE2=sm2-kem
+  KE=x25519, ADDKE1=sm2-kem，ADDKE2=ml-kem-768,
 IKE_INTERMEDIATE #0: 双证书分发 (SignCert, EncCert)
 IKE_INTERMEDIATE #1: SM2-KEM 密钥交换
 IKE_INTERMEDIATE #2: ML-KEM 密钥交换

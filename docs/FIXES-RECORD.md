@@ -824,3 +824,219 @@ initiate completed successfully
 - ⚠️ 需要在实现总结文档中明确说明
 
 ---
+
+### 2026-03-03: SM2-KEM 私钥文件路径修复
+
+**问题**: SM2-KEM 解密失败
+
+**症状**:
+```
+SM2-KEM: sm2_decrypt failed
+generating IKE_INTERMEDIATE response 2 [ N(NO_PROP) ]
+```
+
+**根因**:
+- 代码硬编码私钥文件为 `sm2_enc_key.pem`
+- 但实际与 `encCert.pem` 证书匹配的私钥是 `enc_key.pem`
+- 公钥加密时使用 Responder 的 EncCert 公钥
+- 私钥解密时使用了错误的私钥文件
+
+**验证**:
+```bash
+# 使用错误私钥解密 - 失败
+gmssl sm2decrypt -key private/sm2_enc_key.pem -pass "PQGM2026" -in test_enc.bin
+# decryption failure
+
+# 使用正确私钥解密 - 成功
+gmssl sm2decrypt -key private/enc_key.pem -pass "PQGM2026" -in test_enc.bin
+# 成功
+```
+
+**修复文件**: `/home/ipsec/strongswan/src/libstrongswan/plugins/gmalg/gmalg_ke.c`
+
+**修复内容**:
+```c
+// 修改前
+#define SM2_MY_PRIVKEY_FILE "/usr/local/etc/swanctl/private/sm2_enc_key.pem"
+
+// 修改后
+#define SM2_MY_PRIVKEY_FILE "/usr/local/etc/swanctl/private/enc_key.pem"
+```
+
+**验证结果** - 5-RTT PSK 模式完全成功:
+```
+IKE_SA pqgm-5rtt-psk[1] established
+CHILD_SA net{1} established
+proposals: CURVE_25519/KE1_(1051)/KE2_ML_KEM_768
+initiate completed successfully
+```
+
+---
+
+### 2026-03-03: ML-DSA 5-RTT 完整测试成功
+
+**测试状态**: ✅ 完全成功
+
+**配置文件**: `docker/{initiator,responder}/config/swanctl-5rtt-mldsa.conf`
+
+**协议流程**:
+```
+RTT 1: IKE_SA_INIT - 协商三重密钥交换 (x25519 + SM2-KEM + ML-KEM-768)
+RTT 2: IKE_INTERMEDIATE #0 - 双证书分发 (SignCert + EncCert)
+RTT 3: IKE_INTERMEDIATE #1 - SM2-KEM 密钥交换 (141 字节密文)
+RTT 4: IKE_INTERMEDIATE #2 - ML-KEM-768 密钥交换 (分片传输)
+RTT 5: IKE_AUTH - ML-DSA-65 后量子签名认证 (3309 字节签名)
+```
+
+**成功日志**:
+```
+[CFG] selected proposal: IKE:AES_CBC_256/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/CURVE_25519/KE1_(1051)/KE2_ML_KEM_768
+[IKE] SM2-KEM: computed shared secret (64 bytes)
+[IKE] RFC 9370 Key Derivation: Update after IKE_INTERMEDIATE KE
+[LIB] ML-DSA: signature created successfully, len=3309
+[IKE] authentication of 'initiator.pqgm.test' (myself) with (23) successful
+[LIB] ML-DSA: extracted pubkey, 1952 bytes
+[LIB] ML-DSA: signature verification successful
+[IKE] authentication of 'responder.pqgm.test' with (23) successful
+[IKE] IKE_SA pqgm-5rtt-mldsa[2] established between 172.28.0.10[initiator.pqgm.test]...172.28.0.20[responder.pqgm.test]
+[IKE] CHILD_SA net{2} established with SPIs c9c330ab_i c7d96123_o
+initiate completed successfully
+```
+
+**功能验证**:
+| 功能 | 状态 | 说明 |
+|------|------|------|
+| 三重密钥交换协商 | ✅ | x25519 + SM2-KEM + ML-KEM-768 |
+| SM2-KEM 密钥交换 | ✅ | 141 字节密文，64 字节共享密钥 |
+| ML-KEM-768 密钥交换 | ✅ | 消息分片传输 |
+| RFC 9370 密钥派生 | ✅ | 每次 KE 后更新 SKEYSEED |
+| 双证书分发 | ✅ | SignCert + EncCert |
+| ML-DSA-65 签名生成 | ✅ | 3309 字节 |
+| ML-DSA-65 签名验证 | ✅ | liboqs 验证成功 |
+| 混合证书公钥提取 | ✅ | 从 OID 扩展提取 1952 字节 |
+| IKE_SA 建立 | ✅ | 完整 5-RTT 流程 |
+| CHILD_SA 建立 | ✅ | IPsec ESP SA |
+
+**提案字符串**: `aes256-sha256-x25519-ke1_sm2kem-ke2_mlkem768`
+
+**认证方式**: ML-DSA 混合证书 (ECDSA P-256 占位符 + ML-DSA 扩展)
+
+---
+
+### 2026-03-03: gmalg 插件硬编码路径配置化重构
+
+**问题**: gmalg 插件中存在硬编码的证书和私钥路径，导致部署困难、密码泄露风险
+
+**症状**:
+```c
+// 硬编码在 gmalg_ke.c 中
+#define SM2_MY_PRIVKEY_FILE "/usr/local/etc/swanctl/private/enc_key.pem"
+#define SM2_PEER_PUBKEY_FILE "/usr/local/etc/swanctl/x509/peer_sm2_pubkey.pem"
+#define SM2_PRIVKEY_PASSWORD "PQGM2026"
+```
+
+**根因**:
+- 证书/私钥路径直接硬编码在源代码中
+- 私钥密码硬编码，存在安全风险
+- 每次更换证书或测试环境都需要修改源代码并重新编译
+
+**解决方案**: 实现配置化，通过 strongswan.conf 读取插件配置
+
+**修改文件**: `/home/ipsec/strongswan/src/libstrongswan/plugins/gmalg/gmalg_ke.c`
+
+**新增函数**:
+
+1. **`get_gmalg_config(key, default_value)`** - 从 strongswan.conf 读取配置
+```c
+static char* get_gmalg_config(const char *key, const char *default_value)
+{
+    char buf[256];
+    const char *value;
+
+    snprintf(buf, sizeof(buf), "charon.plugins.gmalg.%s", key);
+    value = lib->settings->get_str(lib->settings, buf, NULL);
+
+    if (value && value[0])
+    {
+        DBG1(DBG_IKE, "SM2-KEM: loaded config %s = %s", key, value);
+        return strdup(value);
+    }
+    return default_value ? strdup(default_value) : NULL;
+}
+```
+
+2. **`build_path(subdir, filename)`** - 构建完整路径
+```c
+static char* build_path(const char *subdir, const char *filename)
+{
+    char buf[PATH_MAX];
+    if (!filename) return NULL;
+    if (filename[0] == '/') return strdup(filename);
+    snprintf(buf, sizeof(buf), "%s/%s/%s", SWANCTL_DIR, subdir, filename);
+    return strdup(buf);
+}
+```
+
+3. **`try_load_sm2_key(filepath, password, sm2_key)`** - 支持多种私钥格式
+   - 加密 PEM (带密码)
+   - 无密码 PEM
+   - DER 原始格式 (32 字节)
+
+4. **`load_sm2_privkey_from_file(filepath, sm2_key)`** - 从配置或默认路径加载私钥
+   - 优先从 `charon.plugins.gmalg.enc_key` 读取路径
+   - 从 `charon.plugins.gmalg.enc_key_secret` 读取密码
+   - 回退到默认路径 `/usr/local/etc/swanctl/private/enc_key.pem`
+
+5. **`load_sm2_pubkey_from_file(filepath, sm2_key)`** - 从配置加载公钥
+   - 优先从 `charon.plugins.gmalg.enc_cert` 读取路径
+   - 回退到默认路径
+
+**配置文件更新**: `docker/initiator/config/strongswan.conf` 和 `docker/responder/config/strongswan.conf`
+
+```conf
+charon {
+    plugins {
+        gmalg {
+            load = yes
+            # SM2 双证书配置
+            sign_cert = signCert.pem
+            enc_cert = encCert.pem
+            # SM2 加密私钥
+            enc_key = enc_key.pem
+            # 私钥密码
+            enc_key_secret = PQGM2026
+        }
+    }
+}
+```
+
+**验证结果**:
+```
+[IKE] SM2-KEM: loaded private key from configured/default path
+[IKE] SM2-KEM: computed shared secret (64 bytes)
+[IKE] authentication of 'initiator.pqgm.test' (myself) with (23) successful
+[IKE] authentication of 'responder.pqgm.test' with (23) successful
+[IKE] IKE_SA pqgm-5rtt-mldsa[2] established
+[IKE] CHILD_SA net{1} established
+initiate completed successfully
+```
+
+**配置迁移指南**:
+
+| 之前 (硬编码) | 之后 (配置化) |
+|--------------|--------------|
+| 修改源代码 | 修改 strongswan.conf |
+| 重新编译 | 重启服务 |
+| 密码在代码中 | 密码在配置文件 |
+
+**支持的私钥格式**:
+- ✅ 加密 PEM (GmSSL `sm2_private_key_info_decrypt_from_pem`)
+- ✅ 无密码 PEM (GmSSL `sm2_private_key_info_from_pem`)
+- ✅ DER 原始格式 (32 字节私钥)
+- ⏳ PKCS#8 (待 GmSSL 支持)
+
+**向后兼容**:
+- 如果未配置 `enc_key`，使用默认路径 `/usr/local/etc/swanctl/private/enc_key.pem`
+- 如果未配置 `enc_key_secret`，尝试无密码加载
+
+---

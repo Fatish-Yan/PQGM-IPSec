@@ -481,7 +481,7 @@ connections {
 
 ```
 RTT 1: IKE_SA_INIT
-       协商 KE=x25519, ADDKE1=ml-kem-768, ADDKE2=sm2-kem
+       协商 KE=x25519, ADDKE1=sm2-kem, ADDKE2=ml-kem-768
        │
 RTT 2: IKE_INTERMEDIATE #0 (消息 ID = 1)
        交换双证书: SignCert + EncCert
@@ -502,10 +502,10 @@ RTT 5: IKE_AUTH (消息 ID = 4)
 // 1. INITIAL_KEY_MAT (IKE_SA_INIT)
 keymat_0 = prf(skeyseed, Ni | Nr | SPIi | SPIr)
 
-// 2. additional_key_mat_1 (ADDKE1: ML-KEM-768)
+// 2. additional_key_mat_1 (ADDKE1: SM2-KEM)
 keymat_1 = prf(keymat_0, "additional key material 1" | DH1)
 
-// 3. additional_key_mat_2 (ADDKE2: SM2-KEM)
+// 3. additional_key_mat_2 (ADDKE2: ML-KEM-768)
 keymat_2 = prf(keymat_1, "additional key material 2" | DH2)
 
 // 4. 最终 KEYMAT

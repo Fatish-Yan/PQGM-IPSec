@@ -205,6 +205,50 @@ initiate completed successfully
 
 ---
 
+### BUG-005: gmalg 插件硬编码路径导致部署困难
+
+**状态**: ✅ 已解决 (2026-03-03)
+
+**发现时间**: 2026-03-03
+
+**症状**:
+- 每次更换证书或测试环境都需要修改源代码
+- 私钥密码硬编码在代码中 (`PQGM2026`)
+- 无法灵活配置不同环境的证书路径
+
+**根因分析**:
+```c
+// 硬编码在 gmalg_ke.c 中
+#define SM2_MY_PRIVKEY_FILE "/usr/local/etc/swanctl/private/enc_key.pem"
+#define SM2_PEER_PUBKEY_FILE "/usr/local/etc/swanctl/x509/peer_sm2_pubkey.pem"
+#define SM2_PRIVKEY_PASSWORD "PQGM2026"
+```
+
+**解决方案**: 配置化重构
+
+1. **添加配置读取函数**:
+   - `get_gmalg_config(key, default)` - 从 strongswan.conf 读取
+   - `build_path(subdir, filename)` - 构建完整路径
+
+2. **支持多种私钥格式**:
+   - 加密 PEM (带密码)
+   - 无密码 PEM
+   - DER 原始格式 (32 字节)
+
+3. **配置方式** (strongswan.conf):
+```conf
+charon.plugins.gmalg {
+    enc_key = enc_key.pem
+    enc_key_secret = PQGM2026
+    enc_cert = encCert.pem
+}
+```
+
+**相关文件**:
+- `src/libstrongswan/plugins/gmalg/gmalg_ke.c`
+
+---
+
 ## 文档更新记录
 
 | 日期 | 更新内容 |

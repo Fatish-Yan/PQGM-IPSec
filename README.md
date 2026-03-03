@@ -9,6 +9,7 @@
 - **SM2 双证书机制**: 签名证书 + 加密证书分离
 - **SM2-KEM 密钥交换**: 基于 SM2 椭圆曲线的密钥封装
 - **ML-KEM-768 混合交换**: NIST 后量子算法与传统算法混合
+- **ML-DSA-65 认证**: 后量子数字签名
 - **IKE_INTERMEDIATE 扩展**: 证书延迟分发机制
 - **Early Gating**: DoS 防护机制
 - **5-RTT 握手流程**: 安全性与性能的平衡
@@ -17,7 +18,9 @@
 
 - **strongSwan 6.0.4**: 开源 IPsec 实现
 - **GmSSL 3.1.3**: 国密算法库 (SM2/SM3/SM4)
-- **ML-KEM**: Module-Lattice-Based Key Encapsulation Mechanism
+- **liboqs 0.10.0**: 后量子算法库 (ML-KEM/ML-DSA)
+- **ML-KEM-768**: Module-Lattice-Based Key Encapsulation
+- **ML-DSA-65**: Module-Lattice-Based Digital Signature
 
 ---
 
@@ -27,16 +30,19 @@
 PQGM-IPSec/
 ├── docs/                      # 项目文档
 │   ├── 参考文档/              # 论文、草案等
-│   ├── SM2_INTEGRATION_PLAN.md # SM2集成方案
-│   └── chapter5_update.md     # 第五章实验数据
-├── strongswan/                # strongSwan 源码（含gmalg插件）
-│   └── src/libstrongswan/plugins/gmalg/
-├── GmSSL/                     # GmSSL 国密库
-├── tests/                     # 测试脚本和配置
+│   ├── TEST-ENVIRONMENT.md    # Docker 测试环境说明
+│   ├── FIXES-RECORD.md        # 修复记录
+│   ├── BUG-RECORD.md          # BUG 记录
+│   └── ML-DSA-5RTT-THESIS-DATA.md # 论文实验数据
+├── docker/                    # Docker 测试环境
 │   ├── initiator/             # 发起方配置
 │   ├── responder/             # 响应方配置
-│   ├── results/               # 测试结果
-│   └── *.sh                   # 自动化脚本
+│   └── docker-compose.yml     # Docker Compose 配置
+├── strongswan/                # strongSwan 源码（含 gmalg/mldsa 插件）
+│   └── src/libstrongswan/plugins/
+│       ├── gmalg/              # 国密算法插件
+│       └── mldsa/              # ML-DSA 签名插件
+├── GmSSL/                     # GmSSL 国密库
 └── README.md                  # 本文件
 ```
 
@@ -47,62 +53,116 @@ PQGM-IPSec/
 ### 1. 环境要求
 
 - Ubuntu 22.04 LTS (推荐)
-- 两台虚拟机进行通信测试
+- Docker & Docker Compose (用于测试环境)
 - GCC 编译器
 - CMake 3.10+
 
-### 2. 安装依赖
+### 2. 编译依赖
 
 ```bash
+# 安装编译依赖
 sudo apt update
 sudo apt install -y build-essential cmake libgmp-dev \
-    libssl-dev pkg-config flex bison python3-pip
-```
+    libssl-dev pkg-config flex bison autoconf automake libtool
 
-### 3. 编译 GmSSL
-
-```bash
+# 编译 GmSSL
 cd GmSSL
 mkdir build && cd build
 cmake ..
-make
+make -j$(nproc)
 sudo make install
-```
+cd ../..
 
-### 4. 编译 strongSwan（含 gmalg 插件）
-
-```bash
+# 编译 strongSwan (含 gmalg + mldsa 插件)
 cd strongswan
 ./autogen.sh
-./configure --enable-gmalg --enable-swanctl \
+./configure --enable-gmalg --enable-mldsa --enable-swanctl \
     --with-gmssl=/usr/local
-make
+make -j$(nproc)
 sudo make install
+cd ..
 ```
 
-### 5. 运行测试
+### 3. 配置插件 (重要!)
 
-参见 [tests/README.md](tests/README.md) 获取详细测试指南。
+**配置文件**: `docker/initiator/config/strongswan.conf`
+
+```conf
+charon {
+    load_modular = yes
+    plugins {
+        gmalg {
+            load = yes
+            # SM2 双证书配置 (文件名，放在 /usr/local/etc/swanctl/x509/)
+            sign_cert = signCert.pem
+            enc_cert = encCert.pem
+            # SM2 加密私钥 (放在 /usr/local/etc/swanctl/private/)
+            enc_key = enc_key.pem
+            # 私钥密码
+            enc_key_secret = PQGM2026
+        }
+        mldsa {
+            load = yes
+        }
+    }
+}
+```
+
+**配置说明**:
+
+| 配置键 | 说明 | 默认值 |
+|--------|------|--------|
+| `sign_cert` | SM2 签名证书文件名 | - |
+| `enc_cert` | SM2 加密证书文件名 | - |
+| `enc_key` | SM2 加密私钥文件名 | `enc_key.pem` |
+| `enc_key_secret` | 私钥密码 | - |
+
+### 4. 运行 Docker 测试
+
+```bash
+# 启动容器
+cd docker
+sudo docker-compose up -d
+
+# 发起连接
+sudo docker exec pqgm-initiator swanctl --load-all
+sudo docker exec pqgm-responder swanctl --load-all
+sudo docker exec pqgm-initiator swanctl --initiate --child net
+
+# 查看日志
+sudo docker logs pqgm-initiator
+```
 
 ---
 
 ## 实验结果
 
-### 握手时延对比
+### 5-RTT 握手时延
 
-| 配置 | 平均时延 | 增加量 | 增加比例 |
-|------|---------|--------|----------|
-| 基线 (x25519) | 48 ms | - | - |
-| 混合 (x25519 + ML-KEM-768) | 52 ms | +4 ms | +8.3% |
-| PQ-GM-IKEv2 (计划中) | TBD | TBD | TBD |
+| RTT | 阶段 | 耗时 |
+|-----|------|------|
+| 1 | IKE_SA_INIT | ~0.8 ms |
+| 2 | IKE_INTERMEDIATE #0 (双证书) | ~0.6 ms |
+| 3 | IKE_INTERMEDIATE #1 (SM2-KEM) | ~35 ms |
+| 4 | IKE_INTERMEDIATE #2 (ML-KEM-768) | ~1.8 ms |
+| 5 | IKE_AUTH (ML-DSA-65) | ~4.0 ms |
+| **总计** | | **~42 ms** |
 
-### 通信开销对比
+### 通信开销
 
-| 配置 | 总报文大小 | 增加量 | 增加比例 |
-|------|-----------|--------|----------|
-| 基线 (2-RTT) | 4238 字节 | - | - |
-| 混合 (4-RTT) | 9534 字节 | +5296 字节 | +125% |
-| PQ-GM-IKEv2 (5-RTT) | TBD | TBD | TBD |
+| 配置 | 总报文大小 | RTT 数 |
+|------|-----------|--------|
+| 标准 IKEv2 (2-RTT) | ~2000 字节 | 2 |
+| PQ-GM-IKEv2 (5-RTT) | ~19905 字节 | 5 |
+
+### 安全强度
+
+| 算法 | 安全级别 | 抗量子 |
+|------|---------|--------|
+| x25519 | 128 位 (古典) | ❌ |
+| SM2-KEM | 256 位 (古典) | ❌ |
+| ML-KEM-768 | 192 位 (经典) / 128 位 (量子) | ✅ |
+| ML-DSA-65 | NIST Level 3 | ✅ |
 
 ---
 
@@ -112,21 +172,25 @@ sudo make install
 - [x] Phase 2: ML-KEM 混合密钥交换测试
 - [x] Phase 3: GmSSL 安装与验证
 - [x] Phase 4: gmalg 插件框架创建
-- [ ] Phase 5: SM2 签名算法实现
-- [ ] Phase 6: SM2-KEM 密钥交换实现
-- [ ] Phase 7: 双证书机制集成
-- [ ] Phase 8: IKE_INTERMEDIATE 扩展
-- [ ] Phase 9: 端到端测试验证
+- [x] Phase 5: SM2 签名算法实现
+- [x] Phase 6: SM2-KEM 密钥交换实现
+- [x] Phase 7: 双证书机制集成
+- [x] Phase 8: IKE_INTERMEDIATE 扩展
+- [x] Phase 9: ML-DSA-65 认证实现
+- [x] Phase 10: 5-RTT 端到端测试验证
+- [x] Phase 11: 插件配置化 (移除硬编码)
 
 ---
 
 ## 参考文献
 
 1. **RFC 7296**: Internet Key Exchange Protocol Version 2 (IKEv2)
-2. **RFC 9370**: Multiple Key Exchanges in IKEv2
-3. **RFC 9528**: Algorithm Identifiers for ML-KEM in IKEv2
-4. **GM/T 0002-0004**: 中国国密算法标准
-5. **draft-pqc-gm-ikev2**: PQ-GM-IKEv2 协议草案
+2. **RFC 9242**: Intermediate Exchange in the Internet Key Exchange Protocol Version 2 (IKEv2)
+3. **RFC 9370**: Multiple Key Exchanges in IKEv2
+4. **FIPS 203**: Module-Lattice-Based Key-Encapsulation Mechanism (ML-KEM)
+5. **FIPS 204**: Module-Lattice-Based Digital Signature Standard (ML-DSA)
+6. **GM/T 0002-0004**: 中国国密算法标准
+7. **draft-pqc-gm-ikev2**: PQ-GM-IKEv2 协议草案
 
 ---
 
@@ -143,4 +207,4 @@ sudo make install
 
 ---
 
-**Copyright (C) 2025 PQGM-IKEv2 Project**
+**Copyright (C) 2025-2026 PQGM-IKEv2 Project**

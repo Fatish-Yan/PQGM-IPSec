@@ -16,7 +16,7 @@ connections {
         remote_addrs = 172.28.0.20
 
         # IKE SA proposals - 三重密钥交换
-        # KE=x25519, ADDKE1=SM2-KEM, ADDKE2=ML-KEM-768
+        # KE=x25519, ADDKE1=sm2kem, ADDKE2=ML-KEM-768
         proposals = aes256-sha256-x25519-ke1_sm2kem-ke2_mlkem768
 
         local {
@@ -57,6 +57,6 @@ secrets {
     # SM2 加密私钥 (用于 SM2-KEM)
     sm2-enc {
         id = initiator.pqgm.test
-        file = enc_key.pem
+        file = sm2_enc_key.pem
     }
 }

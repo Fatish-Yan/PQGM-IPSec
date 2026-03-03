@@ -75,7 +75,7 @@ IKE_SA_INIT        IKE_SA_INIT (协商 x25519 + ML-KEM + SM2-KEM)
 
 ```
 IKE_SA_INIT:
-  Initiator → Responder: SAi1(KE=x25519, ADDKE1=ml-kem-768, ADDKE2=sm2-kem),
+  Initiator → Responder: SAi1(KE=x25519, ADDKE1=sm2-kem, ADDKE2=ml-kem-768),
                         KEi, Ni, N(INTERMEDIATE_EXCHANGE_SUPPORTED)
   Responder → Initiator: SAr1(...), KEr, Nr, N(INTERMEDIATE_EXCHANGE_SUPPORTED)
 

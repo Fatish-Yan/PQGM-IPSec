@@ -128,13 +128,13 @@ IKE_INTERMEDIATE #0  (双证书分发，仅传数据，可不带 KE):
   Initiator -> Responder: HDR, SK { CERT(SignCert_i), CERT(EncCert_i), [CERTREQ] }
   Responder -> Initiator: HDR, SK { CERT(SignCert_r), CERT(EncCert_r) }
 
-IKE_INTERMEDIATE #1  (ADDKE2 = SM2-KEM):
+IKE_INTERMEDIATE #1  (ADDKE1 = SM2-KEM):
   Initiator -> Responder: HDR, SK { KEi(2) [group=sm2-kem] }
   Responder -> Initiator: HDR, SK { KEr(2) [group=sm2-kem] }
   (双方更新密钥材料)
 
 
-IKE_INTERMEDIATE #2  (ADDKE1 = ML-KEM-768):
+IKE_INTERMEDIATE #2  (ADDKE2 = ML-KEM-768):
   Initiator -> Responder: HDR, SK { KEi(1) [group=ml-kem-768] }
   Responder -> Initiator: HDR, SK { KEr(1) [group=ml-kem-768] }
   (双方更新密钥材料：见第 8 节)

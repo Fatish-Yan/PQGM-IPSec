@@ -755,8 +755,8 @@ proposals = aes256-sha384-x25519-ke1_mlkem768-ke2_sm2kem
 
 This configures:
 - KE=x25519 (classic DH)
-- ke1_=ml-kem-768 (post-quantum KEM, ADDKE1)
-- ke2_=sm2-kem (Chinese national KEM, ADDKE2)
+- ke1_=sm2-kem (chinese national KEM, ADDKE1)
+- ke2_=ml-kem-768 (post-quantum KEM, ADDKE2)
 
 ## Protocol Flow
 
