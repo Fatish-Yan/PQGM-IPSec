@@ -1,7 +1,7 @@
 From f256e3adf4b3e65e61019b2c5054450a1ba1fd8e Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 00:32:14 +0800
-Subject: [PATCH 01/40] Add gmalg plugin: SM2/SM3/SM4 implementation for
+Subject: [PATCH 01/41] Add gmalg plugin: SM2/SM3/SM4 implementation for
  strongSwan
 
 Features:
@@ -2223,7 +2223,7 @@ index 0000000000..32fbb9184e
 From 8677e5b49352ee33c1d9e1362761b61e0491b047 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 02:52:06 +0800
-Subject: [PATCH 02/40] Implement SM2-KEM bidirectional encapsulation with
+Subject: [PATCH 02/41] Implement SM2-KEM bidirectional encapsulation with
  pre-distributed keys
 
 Key features:
@@ -4683,7 +4683,7 @@ index 681c1049bf..5116795823 100644
 From df53e7d85936d71a228a28896c789fc0f9552ae8 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 04:12:44 +0800
-Subject: [PATCH 03/40] feat(ike): add M5 IKE_INTERMEDIATE certificate
+Subject: [PATCH 03/41] feat(ike): add M5 IKE_INTERMEDIATE certificate
  distribution support
 
 - Modified ike_cert_post.c to add message ID check for IKE_INTERMEDIATE #0
@@ -4865,7 +4865,7 @@ index ab7e8c5582..071a52f714 100644
 From 81357a2ffaa567136fec47a41294d58b2d227abb Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 19:35:09 +0800
-Subject: [PATCH 04/40] feat(gmalg): add peer_id and my_id fields to SM2-KEM
+Subject: [PATCH 04/41] feat(gmalg): add peer_id and my_id fields to SM2-KEM
  struct
 
 ---
@@ -4900,7 +4900,7 @@ index c6915ae884..d728af4ea7 100644
 From 48a1f31f1c411f8e24b1cccfc1c40bbab15aef7c Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 19:36:03 +0800
-Subject: [PATCH 05/40] feat(gmalg): add ID injection methods for SM2-KEM
+Subject: [PATCH 05/41] feat(gmalg): add ID injection methods for SM2-KEM
 
 ---
  src/libstrongswan/plugins/gmalg/gmalg_ke.c | 29 ++++++++++++++++++++++
@@ -4953,7 +4953,7 @@ index d728af4ea7..8f37f72bb0 100644
 From 27f15bc4e9d893da29292703f1b03ffd7243fe52 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 19:36:49 +0800
-Subject: [PATCH 06/40] fix(gmalg): free injected IDs in SM2-KEM destroy
+Subject: [PATCH 06/41] fix(gmalg): free injected IDs in SM2-KEM destroy
 
 ---
  src/libstrongswan/plugins/gmalg/gmalg_ke.c | 5 +++++
@@ -4982,7 +4982,7 @@ index 8f37f72bb0..2d285e38e0 100644
 From e6ce668ca992184206ce6464c94c0b29d20b34b6 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 19:42:16 +0800
-Subject: [PATCH 07/40] refactor(gmalg): rewrite get_public_key to use
+Subject: [PATCH 07/41] refactor(gmalg): rewrite get_public_key to use
  lib->credmgr
 
 ---
@@ -5127,7 +5127,7 @@ index 2d285e38e0..0e13e72bdf 100644
 From ee67bc58ad94f718578c6d6dddd33018b308829c Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 19:44:41 +0800
-Subject: [PATCH 08/40] refactor(gmalg): rewrite set_public_key to use
+Subject: [PATCH 08/41] refactor(gmalg): rewrite set_public_key to use
  lib->credmgr
 
 ---
@@ -5369,7 +5369,7 @@ index 0e13e72bdf..160444e8a3 100644
 From 330a13eb2015e4a7aaa64cf18a055b2f2b25114d Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 19:45:17 +0800
-Subject: [PATCH 09/40] feat(gmalg): add function declarations for SM2-KEM ID
+Subject: [PATCH 09/41] feat(gmalg): add function declarations for SM2-KEM ID
  injection
 
 ---
@@ -5416,7 +5416,7 @@ index 5116795823..1e4b05f339 100644
 From e7b95029462ab7770544690136803329a42ecfe5 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 19:47:37 +0800
-Subject: [PATCH 10/40] test(gmalg): verify SM2-KEM lib->credmgr integration
+Subject: [PATCH 10/41] test(gmalg): verify SM2-KEM lib->credmgr integration
  compiles and loads
 
 ---
@@ -5797,7 +5797,7 @@ index 8373e6606b..9bfeee9e01 100644
 From 22f5127a36c431fff7f29f38187dc2cd07fbd9e7 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 20:06:29 +0800
-Subject: [PATCH 11/40] feat(ike): include gmalg_ke.h for SM2-KEM ID injection
+Subject: [PATCH 11/41] feat(ike): include gmalg_ke.h for SM2-KEM ID injection
 
 ---
  src/libcharon/sa/ikev2/tasks/ike_init.c | 3 +++
@@ -5824,7 +5824,7 @@ index ca938c605b..9544babd57 100644
 From 35acc67cd77d69f109c755271f5f7ab7d26d3752 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 20:09:03 +0800
-Subject: [PATCH 12/40] feat(ike): add SM2-KEM ID injection with weak symbols
+Subject: [PATCH 12/41] feat(ike): add SM2-KEM ID injection with weak symbols
 
 ---
  src/libcharon/sa/ikev2/tasks/ike_init.c | 40 ++++++++++++++++++++++++-
@@ -5904,7 +5904,7 @@ index 9544babd57..8f6a9e634b 100644
 From b1c95ba0458b2dc236d3736748017f2d29a68b49 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 20:10:15 +0800
-Subject: [PATCH 13/40] feat(ike): inject SM2-KEM IDs in build_i_multi_ke and
+Subject: [PATCH 13/41] feat(ike): inject SM2-KEM IDs in build_i_multi_ke and
  build_i
 
 ---
@@ -5953,7 +5953,7 @@ index 8f6a9e634b..5c787f8009 100644
 From 53046ea4ffd7f009d75f019772f0a96f0bebecaf Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Fri, 27 Feb 2026 20:14:56 +0800
-Subject: [PATCH 14/40] feat(ike): use dlopen/dlsym for SM2-KEM ID injection
+Subject: [PATCH 14/41] feat(ike): use dlopen/dlsym for SM2-KEM ID injection
  from plugin
 
 ---
@@ -6077,7 +6077,7 @@ index 5c787f8009..b37f491547 100644
 From 651f426416845882fe1042b8ea949710f002dcba Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sat, 28 Feb 2026 20:28:20 +0800
-Subject: [PATCH 15/40] feat(gmalg): use GmSSL for SM2 key operations with
+Subject: [PATCH 15/41] feat(gmalg): use GmSSL for SM2 key operations with
  encrypted private key
 
 - Use sm2_public_key_info_from_pem() for public key loading
@@ -9642,7 +9642,7 @@ index 0000000000..3516308496
 From 6d6ffaf2107750a8e22d3fcfcb5927738f991435 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sat, 28 Feb 2026 21:49:55 +0800
-Subject: [PATCH 16/40] feat(cert): add SM2 certificate distribution in
+Subject: [PATCH 16/41] feat(cert): add SM2 certificate distribution in
  IKE_INTERMEDIATE
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -9787,7 +9787,7 @@ index 03f750e30f..aecae35f09 100644
 From f29e6e14f63a5b077387e7003fc60e17d005b280 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sat, 28 Feb 2026 22:51:44 +0800
-Subject: [PATCH 17/40] feat(ike_init): separate IKE_INTERMEDIATE rounds for
+Subject: [PATCH 17/41] feat(ike_init): separate IKE_INTERMEDIATE rounds for
  5-RTT PQ-GM-IKEv2
 
 Implement proper separation of IKE_INTERMEDIATE exchanges:
@@ -9970,7 +9970,7 @@ index b149bbd1a2..76aaa78d2d 100644
 From 704c427a368fb880082907ea22eae2182dce7be2 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 02:10:08 +0800
-Subject: [PATCH 18/40] feat(sm2-kem): dynamic key extraction from certificates
+Subject: [PATCH 18/41] feat(sm2-kem): dynamic key extraction from certificates
  for Docker testing
 
 Implement dynamic SM2 public key extraction from received EncCert,
@@ -10524,7 +10524,7 @@ index 1e4b05f339..60794d29b6 100644
 From 34df6d111a4fc6a0d907709034e7eb7042c3ee09 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 03:42:56 +0800
-Subject: [PATCH 19/40] fix(cert): try both sm2_sign_cert.pem and signCert.pem
+Subject: [PATCH 19/41] fix(cert): try both sm2_sign_cert.pem and signCert.pem
  file names
 
 ---
@@ -10590,7 +10590,7 @@ index fcaacf6056..311b652c06 100644
 From 5eb95d9da46eb437b229d3b5e6c188761aab8aca Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 16:41:08 +0800
-Subject: [PATCH 20/40] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8DIKE=5FINTERMEDIA?=
+Subject: [PATCH 20/41] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8DIKE=5FINTERMEDIA?=
  =?UTF-8?q?TE=E8=AF=81=E4=B9=A6=E4=BA=A4=E6=8D=A2=E5=93=8D=E5=BA=94?=
  =?UTF-8?q?=E6=96=B9=E9=80=BB=E8=BE=91?=
 MIME-Version: 1.0
@@ -10773,7 +10773,7 @@ index 311b652c06..9dfb33b095 100644
 From e4f9d902372c3fbc2ec8aee00ba7479e58e18155 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 19:53:39 +0800
-Subject: [PATCH 21/40] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8DSM2-KEM=E5=85=AC?=
+Subject: [PATCH 21/41] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8DSM2-KEM=E5=85=AC?=
  =?UTF-8?q?=E9=92=A5=E6=8F=90=E5=8F=96=E6=9C=BA=E5=88=B6=EF=BC=8C=E4=BC=98?=
  =?UTF-8?q?=E5=8C=96=E6=80=A7=E8=83=BD?=
 MIME-Version: 1.0
@@ -11219,7 +11219,7 @@ index 004ff4cd93..c1b99a8c1a 100644
 From 27a09c21f3afe3d214e05874ee24084602c385a7 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 20:21:47 +0800
-Subject: [PATCH 22/40] =?UTF-8?q?fix:=20P0=E9=97=AE=E9=A2=98=E9=83=A8?=
+Subject: [PATCH 22/41] =?UTF-8?q?fix:=20P0=E9=97=AE=E9=A2=98=E9=83=A8?=
  =?UTF-8?q?=E5=88=86=E4=BF=AE=E5=A4=8D=20-=20=E6=B7=BB=E5=8A=A0=E8=AF=81?=
  =?UTF-8?q?=E4=B9=A6=E5=85=AC=E9=92=A5=E6=8F=90=E5=8F=96=E6=94=AF=E6=8C=81?=
 MIME-Version: 1.0
@@ -11636,7 +11636,7 @@ index bfedd9fa5c..89dd0b45a8 100644
 From d33ecae3ce8ffedf1ccb9ea21867cf1e181577fb Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 20:55:59 +0800
-Subject: [PATCH 23/40] =?UTF-8?q?fix:=20SM2=20=E5=85=AC=E9=92=A5=E4=BB=8E?=
+Subject: [PATCH 23/41] =?UTF-8?q?fix:=20SM2=20=E5=85=AC=E9=92=A5=E4=BB=8E?=
  =?UTF-8?q?=20IKE=5FINTERMEDIATE=20EncCert=20=E6=AD=A3=E7=A1=AE=E6=8F=90?=
  =?UTF-8?q?=E5=8F=96?=
 MIME-Version: 1.0
@@ -11764,7 +11764,7 @@ index 89dd0b45a8..7194be930b 100644
 From c63de1586da9ccc2d0a37da96bf56d89814c23db Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 21:35:21 +0800
-Subject: [PATCH 24/40] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8D=20IKE=5FINTERME?=
+Subject: [PATCH 24/41] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8D=20IKE=5FINTERME?=
  =?UTF-8?q?DIATE=20=E5=8F=8C=E5=90=91=E8=AF=81=E4=B9=A6=E4=BA=A4=E6=8D=A2?=
  =?UTF-8?q?=E6=AD=BB=E9=94=81=E9=97=AE=E9=A2=98?=
 MIME-Version: 1.0
@@ -11818,7 +11818,7 @@ index 629b018fad..fb1f35bcdf 100644
 From b1eb4315ec8b4c393485e96de9168b678c38ca71 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 22:32:16 +0800
-Subject: [PATCH 25/40] feat(rfc9370): add key derivation chain verification
+Subject: [PATCH 25/41] feat(rfc9370): add key derivation chain verification
  logging
 
 ---
@@ -11897,7 +11897,7 @@ index f68a146005..f276af8cce 100644
 From 6b90ab165003d3909ccf2693069ce0a23d982600 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Sun, 1 Mar 2026 22:33:09 +0800
-Subject: [PATCH 26/40] feat(smkem): add shared secret logging for RFC 9370
+Subject: [PATCH 26/41] feat(smkem): add shared secret logging for RFC 9370
  verification
 
 ---
@@ -11925,7 +11925,7 @@ index c1b99a8c1a..6a949a8e0c 100644
 From 77f8a92f03490ef79865c13720a16d5b9768a21f Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 00:16:47 +0800
-Subject: [PATCH 27/40] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8DSM2=20EncCert=20?=
+Subject: [PATCH 27/41] =?UTF-8?q?fix:=20=E4=BF=AE=E5=A4=8DSM2=20EncCert=20?=
  =?UTF-8?q?OID=E6=A3=80=E6=9F=A5=E6=9D=A1=E4=BB=B6?=
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -11967,7 +11967,7 @@ index fb1f35bcdf..3b80ef3a8c 100644
 From cda500b13b96cd817ed1df51e202260243211977 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 01:27:59 +0800
-Subject: [PATCH 28/40] =?UTF-8?q?fix(gmalg):=20SM2-KEM=20=E7=A7=81?=
+Subject: [PATCH 28/41] =?UTF-8?q?fix(gmalg):=20SM2-KEM=20=E7=A7=81?=
  =?UTF-8?q?=E9=92=A5=E5=8A=A0=E8=BD=BD=E6=94=AF=E6=8C=81=20ECDSA=20?=
  =?UTF-8?q?=E8=AF=81=E4=B9=A6=E8=AE=A4=E8=AF=81=E5=9C=BA=E6=99=AF?=
 MIME-Version: 1.0
@@ -12066,7 +12066,7 @@ index 6a949a8e0c..be9685ff67 100644
 From 5b6b6c726d8fd3c7e4653cabbcdfcfa7a7bb2f68 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 02:12:10 +0800
-Subject: [PATCH 29/40] feat(mldsa): add ML-DSA-65 signer plugin skeleton
+Subject: [PATCH 29/41] feat(mldsa): add ML-DSA-65 signer plugin skeleton
 
 - Add mldsa plugin source files (plugin, signer)
 - Integrate into build system (Makefile.am, configure.ac)
@@ -12600,7 +12600,7 @@ index 0000000000..0429febbbf
 From 9f52bbdbe288ea0e51ddf15564d3dcb8df53c63f Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 14:22:28 +0800
-Subject: [PATCH 30/40] feat(mldsa): add ML-DSA private key loader
+Subject: [PATCH 30/41] feat(mldsa): add ML-DSA private key loader
 
 ---
  .../plugins/mldsa/mldsa_private_key.c         | 193 ++++++++++++++++++
@@ -12839,7 +12839,7 @@ index 0000000000..f0298aab18
 From f21cc9fbf7f694b3f02b871a87c96c8f3d3f3582 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 14:25:37 +0800
-Subject: [PATCH 31/40] fix(mldsa): add copyright header and improve comments
+Subject: [PATCH 31/41] fix(mldsa): add copyright header and improve comments
  in private key loader
 
 ---
@@ -12886,7 +12886,7 @@ index a4e0b98e9f..325798629a 100644
 From f9c30d3ae46f1ab35e8c07c3663a9ce541be7f5b Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 14:27:05 +0800
-Subject: [PATCH 32/40] fix(mldsa): correct ML-DSA-65 signature size to 3309
+Subject: [PATCH 32/41] fix(mldsa): correct ML-DSA-65 signature size to 3309
  bytes per FIPS 204
 
 ---
@@ -12920,7 +12920,7 @@ index 0429febbbf..40b2af1298 100644
 From bda38a378c6bea2bd4ba63d6560b2da02995dc15 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 14:27:20 +0800
-Subject: [PATCH 33/40] fix(mldsa): correct ML-DSA-65 signature size to 3309
+Subject: [PATCH 33/41] fix(mldsa): correct ML-DSA-65 signature size to 3309
  bytes per FIPS 204
 
 ---
@@ -12947,7 +12947,7 @@ index 40b2af1298..2bef43d961 100644
 From b9fe1ee1552ef5574c29a1d8fcf2cec01d36da0b Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 14:28:25 +0800
-Subject: [PATCH 34/40] feat(mldsa): register ML-DSA private key loader in
+Subject: [PATCH 34/41] feat(mldsa): register ML-DSA private key loader in
  plugin
 
 - Added mldsa_private_key.h include
@@ -12986,7 +12986,7 @@ index f96d86dbd5..306183d62e 100644
 From bfcb099e0b0388c9b786693dda2e470315a74968 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 14:49:53 +0800
-Subject: [PATCH 35/40] fix(mldsa): correct PRIVKEY loader function signature
+Subject: [PATCH 35/41] fix(mldsa): correct PRIVKEY loader function signature
  to match strongSwan builder pattern
 
 The mldsa_private_key_load function signature was incorrect for the PRIVKEY
@@ -13317,7 +13317,7 @@ index 1515083b21..a92111ba1f 100644
 From 32e31b3e1f8885404190cb637b26edbfe165b8df Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 15:20:54 +0800
-Subject: [PATCH 36/40] feat(mldsa): implement ML-DSA private key loader with
+Subject: [PATCH 36/41] feat(mldsa): implement ML-DSA private key loader with
  builder pattern
 
 - Fixed function signature to match PRIVKEY builder pattern
@@ -13645,7 +13645,7 @@ index fc513494e3..953d2d2c1b 100644
 From 0fcf4c497be8a9caae410127b9ae28a7faa4176e Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 17:52:47 +0800
-Subject: [PATCH 37/40] feat(mldsa): implement ML-DSA public key extraction
+Subject: [PATCH 37/41] feat(mldsa): implement ML-DSA public key extraction
  from hybrid certificates
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
@@ -14395,7 +14395,7 @@ index 0000000000..8fa785e948
 From 6bcc05c4aaa1588193d69b10e78b1388448d17cd Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Mon, 2 Mar 2026 18:32:40 +0800
-Subject: [PATCH 38/40] feat(mldsa): add ML-DSA-65 OID support for RFC 7427
+Subject: [PATCH 38/41] feat(mldsa): add ML-DSA-65 OID support for RFC 7427
  signature authentication
 
 - Add id-ml-dsa-65 OID (2.16.840.1.101.3.4.3.18) to oid.txt
@@ -14449,7 +14449,7 @@ index da73a9ffd1..41e2029bbb 100644
 From 57fc9a0bdcc995c8240a4074bfd9c29d0124ecca Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Wed, 4 Mar 2026 00:47:49 +0800
-Subject: [PATCH 39/40] feat(gmalg): add native HMAC-SM3 integrity algorithm
+Subject: [PATCH 39/41] feat(gmalg): add native HMAC-SM3 integrity algorithm
  implementation
 
 Implement HMAC-SM3-128 (1056) and HMAC-SM3-256 (1057) for IKE/ESP
@@ -14794,7 +14794,7 @@ index 0000000000..a056be2233
 From eeb32a706474547e7ea92da124825d5f26e3d5b8 Mon Sep 17 00:00:00 2001
 From: IPSec User <ipsec@example.com>
 Date: Wed, 4 Mar 2026 00:48:13 +0800
-Subject: [PATCH 40/40] feat: add HMAC-SM3 integrity and SM2-KEM key
+Subject: [PATCH 40/41] feat: add HMAC-SM3 integrity and SM2-KEM key
  encapsulation
 
 gmalg plugin:
@@ -15936,6 +15936,179 @@ index 8fa785e948..74b38db384 100644
 +mldsa_public_key_t *mldsa_public_key_create(chunk_t data);
 +
  #endif /** MLDSA_PUBLIC_KEY_H_ @}*/
+-- 
+2.34.1
+
+
+From 07a9a235e13168b9fd0d463c38c718f21b3bc8ac Mon Sep 17 00:00:00 2001
+From: IPSec User <ipsec@example.com>
+Date: Wed, 4 Mar 2026 01:01:33 +0800
+Subject: [PATCH 41/41] feat: add SM4, HMAC-SM3 andgorithms forfor IKE/ESP
+ proposals
+
+This commit includes:
+- gmalg plugin: native HMAC-SM3 signer implementation
+- gmalg_plugin.c: updated to use new HMAC-SM3 signers
+- hasher.c: updated to support HASH_SM3 and PRF_SM3 in switch
+- iv_gen.c: updated to handle SM4 encryption algorithms
+- proposal_keywords_static.txt: added sm4/hmacsm3/prfsm3 keywords
+
+Docker configs (initiator/responder):
+- swanctl.conf: updated with pqgm-5rtt-gm-symm connection
+- Uses SM4-CBC + HMAC-SM3 + x25519 + SM2-KEM + ML-KEM-768
+---
+ src/libstrongswan/crypto/crypters/crypter.h       |  4 ++++
+ src/libstrongswan/crypto/hashers/hasher.c         |  2 ++
+ src/libstrongswan/crypto/iv/iv_gen.c              |  3 +++
+ src/libstrongswan/crypto/prfs/prf.h               |  2 ++
+ .../crypto/proposal/proposal_keywords_static.txt  |  5 +++++
+ src/libstrongswan/plugins/gmalg/gmalg_hasher.c    | 15 ++++++++++++---
+ src/libstrongswan/plugins/gmalg/gmalg_hasher.h    |  5 ++---
+ 7 files changed, 30 insertions(+), 6 deletions(-)
+
+diff --git a/src/libstrongswan/crypto/crypters/crypter.h b/src/libstrongswan/crypto/crypters/crypter.h
+index a58bfd0d01..1a12fc292c 100644
+--- a/src/libstrongswan/crypto/crypters/crypter.h
++++ b/src/libstrongswan/crypto/crypters/crypter.h
+@@ -67,6 +67,10 @@ enum encryption_algorithm_t {
+ 	ENCR_RC2_CBC =          1028,
+ 	ENCR_AES_ECB =			1029,
+ 	ENCR_AES_CFB =			1030,
++	/* SM4 Chinese national cipher (GM/T 0002-2012) */
++	ENCR_SM4_ECB =			1040,
++	ENCR_SM4_CBC =			1041,
++	ENCR_SM4_CTR =			1042,
+ };
+ 
+ #define DES_BLOCK_SIZE			 8
+diff --git a/src/libstrongswan/crypto/hashers/hasher.c b/src/libstrongswan/crypto/hashers/hasher.c
+index 896f49d4cf..a408fb655e 100644
+--- a/src/libstrongswan/crypto/hashers/hasher.c
++++ b/src/libstrongswan/crypto/hashers/hasher.c
+@@ -175,6 +175,8 @@ hash_algorithm_t hasher_algorithm_from_prf(pseudo_random_function_t alg)
+ 			return HASH_SHA384;
+ 		case PRF_HMAC_SHA2_512:
+ 			return HASH_SHA512;
++		case PRF_SM3:
++			return HASH_SM3;
+ 		case PRF_HMAC_TIGER:
+ 		case PRF_AES128_XCBC:
+ 		case PRF_AES128_CMAC:
+diff --git a/src/libstrongswan/crypto/iv/iv_gen.c b/src/libstrongswan/crypto/iv/iv_gen.c
+index e2f1ff6ba5..4ce451b48b 100644
+--- a/src/libstrongswan/crypto/iv/iv_gen.c
++++ b/src/libstrongswan/crypto/iv/iv_gen.c
+@@ -40,6 +40,7 @@ iv_gen_t* iv_gen_create_for_alg(encryption_algorithm_t alg)
+ 		case ENCR_TWOFISH_CBC:
+ 		case ENCR_RC2_CBC:
+ 		case ENCR_AES_CFB:
++		case ENCR_SM4_CBC:
+ 			return iv_gen_rand_create();
+ 		case ENCR_AES_CTR:
+ 		case ENCR_AES_CCM_ICV8:
+@@ -52,12 +53,14 @@ iv_gen_t* iv_gen_create_for_alg(encryption_algorithm_t alg)
+ 		case ENCR_CAMELLIA_CCM_ICV8:
+ 		case ENCR_CAMELLIA_CCM_ICV12:
+ 		case ENCR_CAMELLIA_CCM_ICV16:
++		case ENCR_SM4_CTR:
+ 		case ENCR_CHACHA20_POLY1305:
+ 		case ENCR_NULL_AUTH_AES_GMAC:
+ 			return iv_gen_seq_create();
+ 		case ENCR_NULL:
+ 			return iv_gen_null_create();
+ 		case ENCR_UNDEFINED:
++		case ENCR_SM4_ECB:
+ 		case ENCR_DES_ECB:
+ 		case ENCR_DES_IV32:
+ 		case ENCR_DES_IV64:
+diff --git a/src/libstrongswan/crypto/prfs/prf.h b/src/libstrongswan/crypto/prfs/prf.h
+index b2133a34af..2aa64fe0cb 100644
+--- a/src/libstrongswan/crypto/prfs/prf.h
++++ b/src/libstrongswan/crypto/prfs/prf.h
+@@ -63,6 +63,8 @@ enum pseudo_random_function_t {
+ 	PRF_KEYED_SHA1 = 1027,
+ 	/** draft-kanno-ipsecme-camellia-xcbc, not yet assigned by IANA */
+ 	PRF_CAMELLIA128_XCBC = 1028,
++	/** SM3 PRF (GM/T 0004-2012) */
++	PRF_SM3 = 1052,
+ };
+ 
+ /**
+diff --git a/src/libstrongswan/crypto/proposal/proposal_keywords_static.txt b/src/libstrongswan/crypto/proposal/proposal_keywords_static.txt
+index a5939cdb5d..b3851affec 100644
+--- a/src/libstrongswan/crypto/proposal/proposal_keywords_static.txt
++++ b/src/libstrongswan/crypto/proposal/proposal_keywords_static.txt
+@@ -182,5 +182,10 @@ mlkem512,         KEY_EXCHANGE_METHOD, ML_KEM_512,                 0
+ mlkem768,         KEY_EXCHANGE_METHOD, ML_KEM_768,                 0
+ mlkem1024,        KEY_EXCHANGE_METHOD, ML_KEM_1024,                0
+ sm2kem,           KEY_EXCHANGE_METHOD, KE_SM2,                     0
++sm4,              ENCRYPTION_ALGORITHM, ENCR_SM4_CBC,             128
++sm4cbc,           ENCRYPTION_ALGORITHM, ENCR_SM4_CBC,             128
++hmacsm3,          INTEGRITY_ALGORITHM,  AUTH_HMAC_SM3_128,          0
++hmacsm3_256,      INTEGRITY_ALGORITHM,  AUTH_HMAC_SM3_256,          0
++prfsm3,           PSEUDO_RANDOM_FUNCTION, PRF_SM3,                  0
+ noesn,            EXTENDED_SEQUENCE_NUMBERS, NO_EXT_SEQ_NUMBERS,   0
+ esn,              EXTENDED_SEQUENCE_NUMBERS, EXT_SEQ_NUMBERS,      0
+diff --git a/src/libstrongswan/plugins/gmalg/gmalg_hasher.c b/src/libstrongswan/plugins/gmalg/gmalg_hasher.c
+index edb44f79cd..66b07d7446 100644
+--- a/src/libstrongswan/plugins/gmalg/gmalg_hasher.c
++++ b/src/libstrongswan/plugins/gmalg/gmalg_hasher.c
+@@ -170,7 +170,11 @@ METHOD(prf_t, get_bytes, bool,
+ 		size_t len = (seed.len - i) < SM3_DIGEST_SIZE ? (seed.len - i) : SM3_DIGEST_SIZE;
+ 
+ 		sm3_init(&ctx);
+-		sm3_update(&ctx, this->key.ptr, this->key.len);
++		/* Handle empty key case - use zero-padded key if not set */
++		if (this->key.len > 0 && this->key.ptr)
++		{
++			sm3_update(&ctx, this->key.ptr, this->key.len);
++		}
+ 		sm3_update(&ctx, seed.ptr + i, len);
+ 		sm3_finish(&ctx, digest);
+ 
+@@ -226,10 +230,15 @@ METHOD(prf_t, prf_destroy, void,
+ /*
+  * see header file
+  */
+-prf_t* gmalg_sm3_prf_create(chunk_t key)
++prf_t* gmalg_sm3_prf_create(pseudo_random_function_t algo)
+ {
+ 	private_gmalg_sm3_prf_t *this;
+ 
++	if (algo != PRF_SM3)
++	{
++		return NULL;
++	}
++
+ 	INIT(this,
+ 		.public = {
+ 			.prf_interface = {
+@@ -240,7 +249,7 @@ prf_t* gmalg_sm3_prf_create(chunk_t key)
+ 				.set_key = _set_key,
+ 				.destroy = _prf_destroy,
+ 			},
+-			.key = chunk_clone(key),
++			.key = chunk_empty,
+ 		});
+ 
+ 	return &this->public.prf_interface;
+diff --git a/src/libstrongswan/plugins/gmalg/gmalg_hasher.h b/src/libstrongswan/plugins/gmalg/gmalg_hasher.h
+index 4c72da61e2..0a575ec462 100644
+--- a/src/libstrongswan/plugins/gmalg/gmalg_hasher.h
++++ b/src/libstrongswan/plugins/gmalg/gmalg_hasher.h
+@@ -47,10 +47,9 @@ gmalg_sm3_hasher_t* gmalg_sm3_hasher_create(hash_algorithm_t algo);
+ /**
+  * Create an SM3 PRF instance
+  *
+- * @param key	Key for PRF
+- *
++ * @param algo		PRF algorithm (must be PRF_SM3)
+  * Returns prf instance
+  */
+-prf_t* gmalg_sm3_prf_create(chunk_t key);
++prf_t* gmalg_sm3_prf_create(pseudo_random_function_t algo);
+ 
+ #endif /* GMALG_HASHER_H_ */
 -- 
 2.34.1
 
