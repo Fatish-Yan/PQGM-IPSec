@@ -107,6 +107,45 @@ docker exec -it pqgm-responder swanctl --list-sas
 
 ---
 
+## 国密对称栈测试 (2026-03-04 新增)
+
+### 可用连接配置
+
+| 连接名 | IKE 提案 | ESP 提案 | 状态 |
+|--------|----------|----------|------|
+| pqgm-5rtt-mldsa | AES256/SHA256 | AES-GCM-256 | ✅ 工作中 |
+| pqgm-5rtt-gm-symm | SM4/HMAC-SM3/PRF-SM3 | AES-GCM-256 | ✅ 工作中 |
+
+### 国密对称栈测试命令
+
+```bash
+# 加载配置
+docker exec pqgm-initiator swanctl --load-all
+docker exec pqgm-responder swanctl --load-all
+
+# 发起国密对称栈连接
+docker exec pqgm-initiator swanctl --initiate --child net --ike pqgm-5rtt-gm-symm
+
+# 查看 SA 状态
+docker exec pqgm-initiator swanctl --list-sas
+```
+
+### 预期成功日志
+
+```
+[CFG] selected proposal: IKE:SM4_CBC_128/HMAC_SM3_128/PRF_SM3/CURVE_25519/KE1_KE_SM2/KE2_ML_KEM_768
+[IKE] IKE_SA pqgm-5rtt-gm-symm[1] established!
+[IKE] CHILD_SA net{1} established!
+initiate completed successfully
+```
+
+### 已知限制
+
+- **ESP层SM4**: Linux内核不支持 `cbc(sm4)`，ESP临时使用AES-GCM
+- **解决方案**: 编译时添加 `--enable-kernel-libipsec` 启用用户态ESP
+
+---
+
 ## 证书说明
 
 ### SM2 双证书机制
