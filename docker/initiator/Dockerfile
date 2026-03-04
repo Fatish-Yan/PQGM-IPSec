@@ -15,11 +15,12 @@ RUN apt-get update && apt-get install -y \
     iputils-ping \
     && rm -rf /var/lib/apt/lists/*
 
-# Install strongSwan from source with gmalg plugin
+# Install strongSwan from source with gmalg AND mldsa plugins
 COPY strongswan /opt/strongswan
 RUN cd /opt/strongswan && \
     ./configure --prefix=/usr/local \
         --enable-gmalg \
+        --enable-mldsa \
         --enable-swanctl \
         --enable-openssl \
         --enable-pem \
