@@ -6,6 +6,52 @@
 
 ## 修复历史
 
+### 2026-03-05 00:30: SM2-KEM 私钥预加载配置缺失 ✅ 已修复
+
+**问题**: SM2-KEM 私钥预加载失败，导致性能从 22x 优化退化
+
+**症状**:
+```
+SM2-KEM: preloading SM2 private key for performance
+SM2-KEM: failed to preload SM2 private key from /usr/local/etc/swanctl/private/enc_key.pem
+```
+
+**根因分析**:
+- gmalg 插件预加载功能需要从配置读取 `enc_key_secret` (私钥密码)
+- `/usr/local/etc/strongswan.d/charon/gmalg.conf` 缺少 `enc_key_secret` 配置项
+- SM2 加密私钥是加密的 PEM 格式 (`BEGIN ENCRYPTED PRIVATE KEY`)
+
+**修复方案**:
+
+在 `/usr/local/etc/strongswan.d/charon/gmalg.conf` 中添加:
+```conf
+gmalg {
+    load = yes
+    enc_key = enc_key.pem
+    enc_key_secret = PQGM2026
+}
+```
+
+**验证结果**:
+```
+SM2-KEM: preloading SM2 private key for performance
+SM2-KEM: loaded config enc_key = enc_key.pem
+SM2-KEM: loaded config enc_key_secret = PQGM2026
+SM2-KEM: preloaded SM2 private key successfully (encrypted PEM)
+```
+
+**性能影响**:
+- RTT3 (SM2-KEM): 从 ~31.5ms 降至 ~1.4ms (**22x 加速**)
+- 总握手时间: 从 ~39.6ms 降至 ~11.1ms
+
+**修改文件**:
+- `/usr/local/etc/strongswan.d/charon/gmalg.conf` - 添加 enc_key 和 enc_key_secret
+- `/home/ipsec/PQGM-IPSec/vm-test/gmalg.conf` - VM测试配置模板
+- `/home/ipsec/PQGM-IPSec/vm-test/scripts/setup_responder.sh` - 添加 gmalg.conf 复制
+- `/home/ipsec/PQGM-IPSec/vm-test/scripts/setup_initiator.sh` - 添加 gmalg.conf 复制
+
+---
+
 ### 2026-03-04 19:30: PRF-SM3 增量模式 + HMAC-SM3 Key Length 🎉 完全解决！
 
 **问题**: `collect_int_auth_data returned FAILED`，CHILD_SA无法建立

@@ -1,0 +1,73 @@
+version: '3.8'
+# Docker 双端测试配置 - 使用 vm-test 目录的配置文件
+# 用于验证 5-RTT 流程是否正确
+
+services:
+  initiator:
+    image: ubuntu:22.04
+    container_name: pqgm-initiator-test
+    hostname: initiator.pqgm.test
+    networks:
+      pqgm_net:
+        ipv4_address: 172.30.0.10
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    tmpfs:
+      - /var/run:exec
+      - /tmp
+    volumes:
+      # strongSwan 安装目录
+      - /usr/local:/usr/local:ro
+      # 使用 docker 目录的证书 (绝对路径)
+      - /home/ipsec/PQGM-IPSec/docker/initiator/certs/x509:/usr/local/etc/swanctl/x509:ro
+      - /home/ipsec/PQGM-IPSec/docker/initiator/certs/x509ca:/usr/local/etc/swanctl/x509ca:ro
+      - /home/ipsec/PQGM-IPSec/docker/initiator/certs/private:/usr/local/etc/swanctl/private:ro
+      - /home/ipsec/PQGM-IPSec/docker/initiator/certs/pubkey:/usr/local/etc/swanctl/pubkey:ro
+      # 使用 vm-test/docker 目录的配置 (Docker IP 地址)
+      - /home/ipsec/PQGM-IPSec/vm-test/docker/initiator/swanctl.conf:/usr/local/etc/swanctl/swanctl.conf:ro
+      - /home/ipsec/PQGM-IPSec/vm-test/gmalg.conf:/usr/local/etc/strongswan.d/charon/gmalg.conf:ro
+      # 系统库
+      - /lib:/lib:ro
+      - /lib64:/lib64:ro
+      - /usr/lib:/usr/lib:ro
+    command: /bin/bash -c "ldconfig && exec /usr/local/libexec/ipsec/charon --debug-ike 2"
+
+  responder:
+    image: ubuntu:22.04
+    container_name: pqgm-responder-test
+    hostname: responder.pqgm.test
+    networks:
+      pqgm_net:
+        ipv4_address: 172.30.0.20
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    tmpfs:
+      - /var/run:exec
+      - /tmp
+    volumes:
+      # strongSwan 安装目录
+      - /usr/local:/usr/local:ro
+      # 使用 docker 目录的证书 (绝对路径)
+      - /home/ipsec/PQGM-IPSec/docker/responder/certs/x509:/usr/local/etc/swanctl/x509:ro
+      - /home/ipsec/PQGM-IPSec/docker/responder/certs/x509ca:/usr/local/etc/swanctl/x509ca:ro
+      - /home/ipsec/PQGM-IPSec/docker/responder/certs/private:/usr/local/etc/swanctl/private:ro
+      - /home/ipsec/PQGM-IPSec/docker/responder/certs/pubkey:/usr/local/etc/swanctl/pubkey:ro
+      # 使用 vm-test/docker 目录的配置 (Docker IP 地址)
+      - /home/ipsec/PQGM-IPSec/vm-test/docker/responder/swanctl.conf:/usr/local/etc/swanctl/swanctl.conf:ro
+      - /home/ipsec/PQGM-IPSec/vm-test/gmalg.conf:/usr/local/etc/strongswan.d/charon/gmalg.conf:ro
+      # 系统库
+      - /lib:/lib:ro
+      - /lib64:/lib64:ro
+      - /usr/lib:/usr/lib:ro
+    command: /bin/bash -c "ldconfig && exec /usr/local/libexec/ipsec/charon --debug-ike 2"
+
+networks:
+  pqgm_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

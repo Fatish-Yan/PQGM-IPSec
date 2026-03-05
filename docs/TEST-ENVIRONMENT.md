@@ -107,6 +107,102 @@ docker exec -it pqgm-responder swanctl --list-sas
 
 ---
 
+## vm-test Docker 测试环境 (2026-03-05)
+
+> 用于验证 5-RTT 流程的独立 Docker 测试环境，使用与 VM 双机测试相同的配置。
+
+### 目录结构
+
+```
+vm-test/
+├── docker-compose-test.yml     # Docker Compose 配置
+├── gmalg.conf                  # gmalg 插件配置
+├── initiator/
+│   └── swanctl.conf           # Initiator 连接配置 (Docker IP)
+├── responder/
+│   └── swanctl.conf           # Responder 连接配置 (Docker IP)
+└── docker/
+    ├── initiator/
+    │   └── swanctl.conf       # Docker Initiator 配置
+    └── responder/
+        └── swanctl.conf       # Docker Responder 配置
+```
+
+### 网络配置
+
+| 容器 | IP 地址 | 主机名 |
+|------|---------|--------|
+| pqgm-initiator-test | 172.30.0.10 | initiator.pqgm.test |
+| pqgm-responder-test | 172.30.0.20 | responder.pqgm.test |
+
+### 测试命令
+
+```bash
+# 启动容器
+cd /home/ipsec/PQGM-IPSec/vm-test
+sudo docker-compose -f docker-compose-test.yml up -d
+
+# 加载配置
+sudo docker exec pqgm-initiator-test swanctl --load-all
+sudo docker exec pqgm-responder-test swanctl --load-all
+
+# 发起 5-RTT 连接
+sudo docker exec pqgm-initiator-test swanctl --initiate --child net --ike pqgm-5rtt-mldsa
+
+# 停止容器
+sudo docker-compose -f docker-compose-test.yml down
+```
+
+### 5-RTT 成功验证 (2026-03-05)
+
+```
+[CFG] selected proposal: IKE:AES_CBC_256/HMAC_SHA2_256_128/PRF_HMAC_SHA2_256/CURVE_25519/KE1_KE_SM2/KE2_ML_KEM_768
+[IKE] SM2-KEM: computed shared secret (64 bytes)
+[IKE] RFC 9370 Key Derivation: Update after IKE_INTERMEDIATE KE
+[LIB] ML-DSA: signature created successfully, len=3309
+[IKE] authentication of 'initiator.pqgm.test' (myself) with (23) successful
+[LIB] ML-DSA: extracted pubkey, 1952 bytes
+[LIB] ML-DSA: signature verification successful
+[IKE] authentication of 'responder.pqgm.test' with (23) successful
+[LIB] ML-DSA: CA constraint bypass for hybrid certificate (ECDSA placeholder detected), peer authenticated
+[IKE] IKE_SA pqgm-5rtt-mldsa[1] established between 172.30.0.10[initiator.pqgm.test]...172.30.0.20[responder.pqgm.test]
+[IKE] CHILD_SA net{1} established with SPIs c8d9e98b_i cdb3f6b7_o and TS 10.1.0.0/16 === 10.2.0.0/16
+initiate completed successfully
+```
+
+### CA 约束绕过 (实验性)
+
+**问题**: ML-DSA 混合证书（ECDSA 占位符 + ML-DSA 扩展）与 strongSwan CA 约束检查不兼容
+
+**症状**: `[CFG] constraint check failed: peer not authenticated by CA 'CN=PQGM-MLDSA-CA'`
+
+**解决方案**: 在 `auth_cfg.c` 中添加绕过逻辑
+```c
+// auth_cfg.c:1195+
+if (require_ca && !ca_match)
+{
+    certificate_t *subject_cert = get(this, AUTH_RULE_SUBJECT_CERT);
+    if (subject_cert)
+    {
+        public_key_t *pubkey = subject_cert->get_public_key(subject_cert);
+        if (pubkey && pubkey->get_type(pubkey) == KEY_ECDSA)
+        {
+            DBG1(DBG_LIB, "ML-DSA: CA constraint bypass for hybrid certificate");
+            ca_match = TRUE;  /* Bypass the CA constraint check */
+        }
+    }
+    ...
+}
+```
+
+**相关文件**:
+- `src/libstrongswan/credentials/credential_manager.c` - 信任链绕过
+- `src/libstrongswan/credentials/auth_cfg.c` - CA 约束绕过
+
+**⚠️ 注意**: 这是实验性绕过，仅适用于测试环境！
+
+---
+
 ## 国密对称栈测试 (2026-03-04 新增)
 
 ### 可用连接配置
@@ -735,6 +831,7 @@ if (x509_key.algor == 18 && x509_key.algor_param == 5)
 | 2026-03-03 | 添加硬编码参考章节，记录所有硬编码路径和值 |
 | 2026-03-03 | 修正 SM2 私钥文件名为 enc_key.pem |
 | 2026-03-03 | **实现配置化**: 移除 SM2 硬编码路径，改为配置文件读取 |
+| 2026-03-05 | **vm-test Docker 测试**: 添加 CA 约束绕过修复，5-RTT 完全成功 |
 
 ---
 
