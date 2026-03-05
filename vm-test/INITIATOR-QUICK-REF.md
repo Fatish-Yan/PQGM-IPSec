@@ -13,7 +13,7 @@
 
 ```bash
 # 一键配置
-sudo /home/ipsec/PQGM-IPSec/vm-test/scripts/setup_initiator_vm.sh
+sudo /home/ipsec/PQGM-IPSec/vm-test/scripts/setup-initiator-vm.sh
 
 # 或手动执行关键命令
 sudo hostnamectl set-hostname initiator.pqgm.test

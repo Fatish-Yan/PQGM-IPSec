@@ -61,7 +61,7 @@ host <对端IP> and (udp port 500 or udp port 4500 or proto 50)
 3. **配置Initiator (克隆机器)**
    ```bash
    # 运行配置脚本
-   sudo /home/ipsec/PQGM-IPSec/vm-test/scripts/setup_initiator.sh
+   sudo /home/ipsec/PQGM-IPSec/vm-test/scripts/setup-initiator-vm.sh
 
    # 验证网络
    ping 192.168.172.132
@@ -120,15 +120,7 @@ swanctl --list-sas
 
 ### Phase 3: 性能数据收集
 
-**方式一：完整测试流程（推荐）**
-自动执行抓包、连接、ESP通信的完整流程：
-```bash
-# 在Initiator上运行（自动捕获IKE + ESP全流程）
-/home/ipsec/PQGM-IPSec/vm-test/scripts/run_full_test.sh pqgm-5rtt-mldsa 5
-/home/ipsec/PQGM-IPSec/vm-test/scripts/run_full_test.sh pqgm-5rtt-gm-symm 5
-```
-
-**方式二：手动分步操作**
+**手动分步操作（推荐）**
 
 **启动PCAP捕获 (两台VM同时)**:
 ```bash
@@ -137,13 +129,14 @@ swanctl --list-sas
 /home/ipsec/PQGM-IPSec/vm-test/scripts/start_capture.sh <对端IP>
 ```
 
-**执行性能测试 (在Initiator上)**:
+**执行连接测试 (在Initiator上)**:
 ```bash
-# 标准算法测试 (10轮)
-/home/ipsec/PQGM-IPSec/vm-test/scripts/run_test.sh pqgm-5rtt-mldsa 10
+# 标准算法测试
+swanctl --initiate --child net --ike pqgm-5rtt-mldsa
 
-# 国密对称栈测试 (10轮)
-/home/ipsec/PQGM-IPSec/vm-test/scripts/run_test.sh pqgm-5rtt-gm-symm 10
+# 国密对称栈测试 (先断开上一个)
+swanctl --terminate --ike all
+swanctl --initiate --child net --ike pqgm-5rtt-gm-symm
 ```
 
 **执行ESP通信测试**（确保捕获ESP流量）:

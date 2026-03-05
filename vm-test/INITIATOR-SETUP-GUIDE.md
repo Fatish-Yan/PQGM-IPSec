@@ -33,10 +33,10 @@ RTT 5: IKE_AUTH        - ML-DSA-65 后量子签名认证 (3309 字节签名)
 
 ```bash
 # 1. 赋予执行权限
-chmod +x /home/ipsec/PQGM-IPSec/vm-test/scripts/setup_initiator_vm.sh
+chmod +x /home/ipsec/PQGM-IPSec/vm-test/scripts/setup-initiator-vm.sh
 
 # 2. 运行配置脚本
-sudo /home/ipsec/PQGM-IPSec/vm-test/scripts/setup_initiator_vm.sh
+sudo /home/ipsec/PQGM-IPSec/vm-test/scripts/setup-initiator-vm.sh
 ```
 
 脚本会自动完成以下配置：
