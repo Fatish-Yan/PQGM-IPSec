@@ -6,7 +6,7 @@
 
 **Architecture:** Use strongSwan's RFC 9370 ADDKE mechanism for automatic key exchange sequencing. Certificate distribution in IKE_INTERMEDIATE #0 is triggered by message ID check. Key derivation follows RFC 9370 PRF chain.
 
-**Tech Stack:** strongSwan 6.0.4, GmSSL 3.1.3, gmalg plugin, ml plugin, swanctl
+**Tech Stack:** strongSwan 6.0.4, GmSSL 3.1.1, gmalg plugin, ml plugin, swanctl
 
 ---
 
@@ -722,7 +722,7 @@ This document describes how to configure and test the PQ-GM-IKEv2 protocol with 
 ## Prerequisites
 
 - strongSwan 6.0.4+ with gmalg and ml plugins
-- GmSSL 3.1.3
+- GmSSL 3.1.1
 - SM2 certificates (sign_cert.pem, enc_cert.pem)
 
 ## Configuration

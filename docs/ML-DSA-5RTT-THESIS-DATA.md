@@ -27,8 +27,8 @@
 | 组件 | 版本 |
 |------|------|
 | strongSwan | 6.0.4 (modified) |
-| GmSSL | 3.1.3 |
-| liboqs | 0.10.0 |
+| GmSSL | 3.1.1 |
+| liboqs | 0.12.0 |
 | Linux 内核 | 6.8.0-101-generic |
 
 ### 密码算法参数

@@ -10,7 +10,7 @@
 **提案**: `aes256-sha256-x25519-ke1_sm2kem-ke2_mlkem768`
 
 **密钥**:
-- SM2-KEM: GmSSL 3.1.3 生成的密钥对
+- SM2-KEM: GmSSL 3.1.1 生成的密钥对
 - 私钥: 加密格式 (密码: PQGM2026)
 - 公钥: PEM格式
 

@@ -27,7 +27,7 @@ if (x509_key.algor == 17 || x509_key.algor == 19)
 if (x509_key.algor == 18 && x509_key.algor_param == 5)
 ```
 
-**GmSSL 3.1.3 正确OID值**:
+**GmSSL 3.1.1 正确OID值**:
 - `OID_ec_public_key = 18` (算法)
 - `OID_sm2 = 5` (曲线参数)
 

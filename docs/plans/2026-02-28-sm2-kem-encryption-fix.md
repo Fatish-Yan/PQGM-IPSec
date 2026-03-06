@@ -6,7 +6,7 @@
 
 **Architecture:** 修改 `gmalg_ke.c` 的 `get_public_key()` 和 `set_public_key()` 方法，通过 strongSwan 的 `get_encoding()` API 提取 DER 字节，再用 GmSSL 的 `sm2_public_key_info_from_der()` / `sm2_private_key_info_from_der()` 解析为 `SM2_KEY`，最终调用 `sm2_encrypt()` / `sm2_decrypt()`。与 `gmalg_signer.c:157-167` 相同的已验证模式。
 
-**Tech Stack:** C, GmSSL 3.1.3 (`sm2_encrypt/decrypt`, `sm2_*_key_info_from_der`), strongSwan 6.0.4 (`lib->credmgr`, `public_key_t::get_encoding`)
+**Tech Stack:** C, GmSSL 3.1.1 (`sm2_encrypt/decrypt`, `sm2_*_key_info_from_der`), strongSwan 6.0.4 (`lib->credmgr`, `public_key_t::get_encoding`)
 
 ---
 

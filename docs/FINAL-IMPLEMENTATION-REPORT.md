@@ -1,7 +1,7 @@
 # PQ-GM-IKEv2 实现最终报告
 
 > 完成时间: 2026-02-28
-> 环境: Ubuntu 22.04, strongSwan 6.0.4, GmSSL 3.1.3
+> 环境: Ubuntu 22.04, strongSwan 6.0.4, GmSSL 3.1.1
 
 ---
 

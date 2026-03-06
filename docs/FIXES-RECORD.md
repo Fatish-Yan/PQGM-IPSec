@@ -347,7 +347,7 @@ if (x509_key.algor == 18 &&  /* OID_ec_public_key */
     x509_key.algor_param == 5)    /* OID_sm2 */
 ```
 
-**GmSSL 3.1.3 OID定义** (见 `/usr/local/include/gmssl/oid.h`):
+**GmSSL 3.1.1 OID定义** (见 `/usr/local/include/gmssl/oid.h`):
 ```
 OID_sm2 = 5           (曲线参数，作为 algor_param)
 OID_ec_public_key = 18 (算法，作为 algor)

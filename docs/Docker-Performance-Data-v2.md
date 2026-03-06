@@ -8,7 +8,7 @@
 | 主机名 | initiator.pqgm.test | responder.pqgm.test |
 | 平台 | Docker Ubuntu 22.04 | Docker Ubuntu 22.04 |
 | strongSwan | 6.0.4 (修改版) | 6.0.4 (修改版) |
-| GmSSL | 3.1.3 | 3.1.3 |
+| GmSSL | 3.1.1 | 3.1.1 |
 | 认证方式 | PSK | PSK |
 
 ## 代码修改 (v2)

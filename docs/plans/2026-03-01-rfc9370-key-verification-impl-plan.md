@@ -6,7 +6,7 @@
 
 **Architecture:** 通过在 derive_ike_keys() 函数中添加调试日志，输出每轮 SKEYSEED 和 SK_* 密钥的哈希值，建立可追溯的密钥演变链。
 
-**Tech Stack:** C (strongSwan 6.0.4), GmSSL 3.1.3, Docker
+**Tech Stack:** C (strongSwan 6.0.4), GmSSL 3.1.1, Docker
 
 ---
 

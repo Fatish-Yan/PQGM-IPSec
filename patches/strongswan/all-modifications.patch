@@ -11935,7 +11935,7 @@ Content-Transfer-Encoding: 8bit
 - 错误代码: algor == 17 || algor == 19
 - 正确代码: algor == 18 && algor_param == 5
 
-根据 GmSSL 3.1.3 的定义:
+根据 GmSSL 3.1.1 的定义:
 - OID_ec_public_key = 18
 - OID_sm2 = 5 (作为 algor_param 曲线参数)
 

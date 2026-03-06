@@ -61,7 +61,7 @@ free(b64_clean);
 
 **文件**: `ike_init.c` 的 `process_i_multi_ke()` 函数
 
-**问题**: GmSSL 3.1.3 中 `X509_KEY.algor` 值是 OID 枚举值：
+**问题**: GmSSL 3.1.1 中 `X509_KEY.algor` 值是 OID 枚举值：
 - `OID_ec_public_key = 18` (不是之前假设的 17)
 - `OID_sm2 = 5` (algor_param)
 
@@ -75,7 +75,7 @@ if (x509_key.algor == 17 || x509_key.algor == 19) /* SM2 - 错误的值！ */
 if (x509_key.algor == 18 && x509_key.algor_param == 5) /* OID_ec_public_key + OID_sm2 */
 ```
 
-### GmSSL 3.1.3 OID 参考
+### GmSSL 3.1.1 OID 参考
 
 ```c
 // gmssl/oid.h

@@ -3,7 +3,7 @@
 ## 测试环境
 - **日期**: 2026-03-02
 - **strongSwan**: 6.0.4 (修改版)
-- **GmSSL**: 3.1.3
+- **GmSSL**: 3.1.1
 - **测试场景**: 5-RTT PQ-GM-IKEv2 with ECDSA Certificate Authentication
 - **平台**: Docker Ubuntu 22.04
 

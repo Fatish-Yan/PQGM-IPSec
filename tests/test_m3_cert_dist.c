@@ -166,7 +166,7 @@ static int m3_extract_peer_pubkey(chunk_t *enc_cert, SM2_KEY *peer_pubkey)
     /* Print public key info */
     uint8_t pubkey_buf[65];
     size_t pubkey_len = sizeof(pubkey_buf);
-    /* Note: GmSSL 3.1.3 doesn't have sm2_public_key_to_bytes directly
+    /* Note: GmSSL 3.1.1 doesn't have sm2_public_key_to_bytes directly
      * The public key is stored in peer_pubkey->public_key (SM2_POINT) */
     (void)pubkey_buf;
     (void)pubkey_len;

@@ -62,10 +62,10 @@ cd PQGM-IPSec
 ### 2.2 安装 GmSSL (国密算法库)
 
 ```bash
-# 克隆 GmSSL 3.1.3
+# 克隆 GmSSL 3.1.1
 git clone https://github.com/guanzhi/GmSSL.git
 cd GmSSL
-git checkout v3.1.3
+git checkout v3.1.1
 
 # 编译安装
 mkdir build && cd build
@@ -78,7 +78,7 @@ sudo ldconfig
 
 # 验证安装
 gmssl version
-# 应输出: GmSSL 3.1.3
+# 应输出: GmSSL 3.1.1
 
 cd ../..
 ```

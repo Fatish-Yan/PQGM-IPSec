@@ -17,8 +17,8 @@
 ### 技术栈
 
 - **strongSwan 6.0.4**: 开源 IPsec 实现
-- **GmSSL 3.1.3**: 国密算法库 (SM2/SM3/SM4)
-- **liboqs 0.10.0**: 后量子算法库 (ML-KEM/ML-DSA)
+- **GmSSL 3.1.1**: 国密算法库 (SM2/SM3/SM4)
+- **liboqs 0.12.0**: 后量子算法库 (ML-KEM/ML-DSA)
 - **ML-KEM-768**: Module-Lattice-Based Key Encapsulation
 - **ML-DSA-65**: Module-Lattice-Based Digital Signature
 

@@ -387,7 +387,7 @@ prf->set_key(prf, secret);
 
 #### 4.1.1 gmalg 插件架构
 
-gmalg 插件是 strongSwan 与 GmSSL 3.1.3 之间的桥梁，它将国密算法注册到 strongSwan 的密码学框架中。
+gmalg 插件是 strongSwan 与 GmSSL 3.1.1 之间的桥梁，它将国密算法注册到 strongSwan 的密码学框架中。
 
 **插件注册模式** (`gmalg_plugin.c:get_features`):
 ```c
@@ -416,7 +416,7 @@ static plugin_feature_t f[] = {
 
 #### 4.1.2 GmSSL API 调用模式
 
-GmSSL 3.1.3 的 API 与 OpenSSL 风格不同，需要注意以下关键点：
+GmSSL 3.1.1 的 API 与 OpenSSL 风格不同，需要注意以下关键点：
 
 **SM3 哈希** (注意：`sm3_hash()` 函数不存在):
 ```c

@@ -169,7 +169,7 @@ keylen_entry_t map[] = {
 ## 版本信息
 
 - strongSwan: 6.0.4 (修改版)
-- GmSSL: 3.1.3
+- GmSSL: 3.1.1
 - 操作系统: Ubuntu 22.04 (Docker 容器)
 - 内核: Linux 6.8.0-101-generic
 

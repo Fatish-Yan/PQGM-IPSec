@@ -308,7 +308,7 @@ RTT 5: IKE_AUTH
 - GM/T 0022: IPsec VPN 技术规范
 - RFC 9242: Intermediate Exchange in the IKEv2 Protocol
 - RFC 9370: Multiple Key Exchanges in the IKEv2 Protocol
-- GmSSL 3.1.3 API 文档
+- GmSSL 3.1.1 API 文档
 
 ---
 

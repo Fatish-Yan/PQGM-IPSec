@@ -6,7 +6,7 @@
 #
 # Reference: https://github.com/open-quantum-safe/oqs-provider
 #
-# ML-DSA (FIPS 204) is supported in OpenSSL 3.5+ with oqs-provider 0.10.0+
+# ML-DSA (FIPS 204) is supported in OpenSSL 3.5+ with oqs-provider 0.12.0+
 
 set -e
 

@@ -147,7 +147,7 @@ Sudo 密码: 1574a
 | 组件 | 版本 | 用途 |
 |------|------|------|
 | strongSwan | 6.0.4 | IPSec VPN 实现 |
-| GmSSL | 3.1.3 Dev | 国密算法库 (SM2/SM3/SM4) |
+| GmSSL | 3.1.1 Dev | 国密算法库 (SM2/SM3/SM4) |
 | gcc | - | 编译器 |
 
 ### 4.4 关键路径
@@ -351,7 +351,7 @@ libstrongswan_gmalg_la_LIBADD = $(top_builddir)/src/libstrongswan/libstrongswan.
 endif
 ```
 
-### 7.2 GmSSL 3.1.3 API 相关
+### 7.2 GmSSL 3.1.1 API 相关
 
 #### 坑点 4: sm3_hash 函数不存在
 **解决**: 使用 SM3_CTX

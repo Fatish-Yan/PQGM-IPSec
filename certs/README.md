@@ -77,7 +77,7 @@ cd /home/ipsec/PQGM-IPSec
 ```
 
 ### Prerequisites
-- GmSSL 3.1.3+ (for SM2 certificate generation)
+- GmSSL 3.1.1+ (for SM2 certificate generation)
 - OpenSSL 3.0+ (for certificate verification)
 
 ## Verification Commands

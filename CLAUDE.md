@@ -15,7 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **双证书机制**: SM2 签名证书/加密证书分离 + 后量子认证证书
 - **基于 RFC 9242/9370**: 利用 IKE_INTERMEDIATE 和多重密钥交换框架
 
-实现平台：strongSwan 6.0.4 + GmSSL 3.1.3 (gmalg 插件)
+实现平台：strongSwan 6.0.4 + GmSSL 3.1.1 (gmalg 插件)
 
 详细项目文档见：`PROJECT.md`
 
@@ -110,9 +110,9 @@ PLUGIN_REGISTER(SIGNER, gmalg_sm2_signer_create),
     PLUGIN_PROVIDE(SIGNER, AUTH_SM2),
 ```
 
-## GmSSL 3.1.3 API (Important!)
+## GmSSL 3.1.1 API (Important!)
 
-**GmSSL 3.1.3 API 与旧版本不同，以下为正确用法：**
+**GmSSL 3.1.1 API 与旧版本不同，以下为正确用法：**
 
 ### SM3 Hash
 ```c

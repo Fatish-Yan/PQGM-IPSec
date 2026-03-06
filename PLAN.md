@@ -13,7 +13,7 @@
 - [ ] 现有插件示例: `/home/ipsec/strongswan/src/libstrongswan/plugins/openssl/`
 - [ ] KE 接口定义: `/home/ipsec/strongswan/src/libstrongswan/crypto/crypto_factory.h`
 
-### 0.2 GmSSL 3.1.3 API 文档
+### 0.2 GmSSL 3.1.1 API 文档
 **需要验证的 API：**
 ```c
 // SM2-KEM 相关 (待验证)

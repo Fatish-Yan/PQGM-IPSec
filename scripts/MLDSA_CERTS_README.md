@@ -10,7 +10,7 @@ This directory contains scripts for generating ML-DSA-65 keys and certificates f
 
 ML-DSA (FIPS 204) certificate generation requires:
 - OpenSSL 3.5 or later
-- oqs-provider 0.10.0 or later
+- oqs-provider 0.12.0 or later
 
 #### Installation Instructions
 
