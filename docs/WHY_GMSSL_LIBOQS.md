@@ -240,6 +240,122 @@ OQS_SIG_verify(sig, message, msg_len, signature, sig_len, pubkey);
 
 ---
 
+## 八、进阶问题：为什么不升级到 OpenSSL 3.5+？
+
+**如果老师问**: "OpenSSL 3.5+ 据说支持国密算法和后量子算法，为什么你不选择升级到 OpenSSL 3.5，而要用 GmSSL 和 liboqs？"
+
+**回答**:
+
+这是一个非常好的问题。经过详细调研，我发现即使使用 OpenSSL 3.5+，仍然无法替代 GmSSL + liboqs 的组合，原因如下：
+
+### 8.1 OpenSSL 各版本支持情况
+
+| 版本 | SM2/SM3/SM4 | ML-KEM | ML-DSA | X.509 SM2 证书 |
+|------|-------------|--------|--------|---------------|
+| **3.0.x** (系统版本) | ❌ | ❌ | ❌ | ❌ |
+| **3.2+** | ⚠️ Provider | ❌ | ❌ | ❌ |
+| **3.3+** | ⚠️ Provider | ⚠️ 实验性 | ❌ | ❌ |
+| **3.4+** | ⚠️ Provider | ⚠️ 实验性 | ⚠️ 实验性 | ❌ |
+
+**关键发现**:
+1. **国密算法支持**: OpenSSL 3.2+ 通过 provider 方式支持 SM2/SM3/SM4，但需要额外安装 `openssl-gm-engine` 或第三方 provider
+2. **后量子算法支持**: OpenSSL 3.3+ 开始实验性支持 ML-KEM，但 ML-DSA 支持更晚
+3. **X.509 SM2 证书解析**: 即使 OpenSSL 3.5+ 也不支持解析 SM2 OID 的证书
+
+### 8.2 核心问题：OpenSSL 无法替代 GmSSL
+
+**问题 1: X.509 证书解析限制**
+
+```
+即使 OpenSSL 支持 SM2 算法，它的 X.509 证书解析器仍然无法识别 SM2 OID：
+
+OID_ec_public_key = 18  (算法 OID)
+OID_sm2 = 5             (曲线参数 OID)
+
+OpenSSL 的 X.509 解析器遇到这种组合会失败，因为它不是标准 NIST 曲线。
+```
+
+**项目中的证据**:
+```c
+// ike_cert_post.c:process_sm2_certs
+// 必须使用 GmSSL 的 API，不能用 OpenSSL
+x509_cert_get_pubkey = dlsym(gmssl_handle, "x509_cert_get_subject_public_key");
+
+// OpenSSL 没有这个函数，因为它的 X.509 解析器不支持 SM2
+```
+
+**问题 2: Provider 方式的局限性**
+
+OpenSSL 3.x 的国密算法支持需要：
+1. 安装第三方 provider (如 `provider-gm`)
+2. 配置 `openssl.cnf` 加载 provider
+3. 应用需要显式调用 provider API
+
+**strongSwan 的问题**:
+- strongSwan 6.0.4 的 configure 脚本要求 `--with-gmssl`，不支持 `--with-openssl-provider`
+- strongSwan 的密码学抽象层直接调用 GmSSL API，不是通过 OpenSSL EVP 接口
+
+### 8.3 为什么 strongSwan 选择 GmSSL 而不是 OpenSSL？
+
+**历史原因**:
+1. strongSwan 6.0+ 开始支持国密算法
+2. 当时 (2023-2024) OpenSSL 3.0 不支持国密
+3. GmSSL 是唯一成熟的开源国密实现
+
+**技术原因**:
+1. **API 兼容性**: GmSSL 保持与 OpenSSL API 兼容，可以无缝替换
+2. **证书支持**: GmSSL 的 X.509 解析器支持 SM2 OID
+3. **国密合规**: GmSSL 符合 GM/T 标准，OpenSSL 不符合
+
+### 8.4 实际困难：升级 OpenSSL 3.5+ 的障碍
+
+**障碍 1: 系统依赖**
+
+```bash
+# 系统 OpenSSL 3.0.2 被其他软件依赖
+sudo apt install openssl=3.5  # 会破坏系统依赖
+```
+
+**障碍 2: strongSwan 构建配置**
+
+```bash
+# strongSwan 配置要求 GmSSL，不支持 OpenSSL Provider
+./configure --enable-gmalg --with-gmssl=/usr/local
+
+# 没有这个选项：
+# ./configure --enable-gmalg --with-openssl-provider=gm  # 不存在！
+```
+
+**障碍 3: 代码修改量**
+
+如果要用 OpenSSL 3.5+ 的 Provider 方式：
+- 需要修改 strongSwan 的所有密码学调用
+- 需要实现自定义 X.509 解析器支持 SM2 OID
+- 工作量相当于重新实现 gmalg 插件
+
+### 8.5 总结回答模板
+
+**简短回答**:
+> "OpenSSL 3.5+ 虽然支持部分国密和后量子算法，但存在三个关键问题：
+>
+> 1. **X.509 证书解析**: OpenSSL 不支持 SM2 OID 的证书解析，而这是 IKE 证书交换必需的
+> 2. **strongSwan 集成**: strongSwan 6.0 的 gmalg 插件直接依赖 GmSSL API，无法通过 OpenSSL Provider 替换
+> 3. **国密合规**: GmSSL 符合 GM/T 标准，而 OpenSSL 的国密实现不符合中国标准
+>
+> 因此，即使升级 OpenSSL 3.5+，仍然需要 GmSSL 处理国密证书，需要 liboqs 处理后量子算法。当前的组合方案是最优选择。"
+
+**详细回答** (如果老师继续追问):
+> "我们调研过 OpenSSL 3.3+ 的后量子支持，发现：
+> - ML-KEM 支持是实验性的，不稳定
+> - ML-DSA 支持更晚，strongSwan 的 mldsa 插件基于 liboqs 开发
+> - 国密算法需要额外 provider，且 X.509 不支持 SM2
+>
+> 同时，升级 OpenSSL 3.5+ 会破坏系统依赖，且需要大量修改 strongSwan 代码。
+>
+> 因此，从**学术研究的可持续性**和**工程可行性**角度，当前方案 (GmSSL 3.1.1 + liboqs 0.12.0) 是最优选择。"
+
+---
+
 ## 七、答辩回答模板
 
 **如果老师问**: "为什么选择 GmSSL 和 liboqs？"
